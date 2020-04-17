@@ -19,19 +19,16 @@ package com.example.jetnews.ui
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.ui.core.setContent
-import com.example.jetnews.data.getPostsWithImagesLoaded
-import com.example.jetnews.data.posts
+import com.example.jetnews.JetnewsApplication
 
 class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        posts = getPostsWithImagesLoaded(
-            posts,
-            resources
-        )
+
+        val appContainer = (application as JetnewsApplication).container
         setContent {
-            JetnewsApp()
+            JetnewsApp(appContainer = appContainer)
         }
     }
 }
