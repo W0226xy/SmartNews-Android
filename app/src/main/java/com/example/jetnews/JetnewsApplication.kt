@@ -18,6 +18,7 @@ package com.example.jetnews
 
 import android.app.Application
 import com.example.jetnews.data.AppContainer
+import com.example.jetnews.data.AppContainerImpl
 
 class JetnewsApplication : Application() {
 
@@ -26,6 +27,6 @@ class JetnewsApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        container = AppContainer(this)
+        container = AppContainerImpl(this)
     }
 }
