@@ -210,7 +210,7 @@ fun InterestsScreen(
                         onClick = {
                             Toast.makeText(
                                 context,
-                                "Search is not yet implemented in this configuration",
+                                context.getString(R.string.search_not_available),
                                 Toast.LENGTH_LONG,
                             ).show()
                         },

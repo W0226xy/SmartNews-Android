@@ -18,9 +18,7 @@ package com.example.jetnews.ui
 
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Icon
@@ -57,7 +55,7 @@ fun AppDrawer(
         drawerState = drawerState,
         modifier = modifier,
     ) {
-        JetNewsLogo(
+        SmartNewsBrand(
             modifier = Modifier.padding(horizontal = 28.dp, vertical = 24.dp),
         )
         navigationItems.forEach { navigationItem ->
@@ -78,18 +76,12 @@ fun AppDrawer(
 }
 
 @Composable
-private fun JetNewsLogo(modifier: Modifier = Modifier) {
+private fun SmartNewsBrand(modifier: Modifier = Modifier) {
     Row(modifier = modifier) {
-        Icon(
-            painterResource(R.drawable.ic_jetnews_logo),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-        )
-        Spacer(Modifier.width(8.dp))
-        Icon(
-            painter = painterResource(R.drawable.ic_jetnews_wordmark),
-            contentDescription = stringResource(R.string.app_name),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        Text(
+            text = stringResource(R.string.app_name),
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.primary,
         )
     }
 }

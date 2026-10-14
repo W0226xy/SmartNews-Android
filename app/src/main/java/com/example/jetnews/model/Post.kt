@@ -18,6 +18,7 @@ package com.example.jetnews.model
 
 import androidx.annotation.DrawableRes
 
+// TODO：阶段二可按接口返回字段扩展文章模型。
 data class Post(
     val id: String,
     val title: String,

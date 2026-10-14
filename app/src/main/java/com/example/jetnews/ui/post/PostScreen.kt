@@ -173,7 +173,7 @@ fun PostScreen(
         } else {
             Surface(modifier = Modifier.fillMaxSize()) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text(text = "Post not found")
+                    Text(text = stringResource(R.string.post_not_found))
                 }
             }
         }

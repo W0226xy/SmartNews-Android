@@ -1,108 +1,39 @@
-# Jetnews sample
-Jetnews is a sample news reading app, built with
-[Jetpack Compose](https://developer.android.com/jetpack/compose). The goal of the sample is to
-showcase the current UI capabilities of Compose.
+# SmartNews
 
-To try out this sample app, use the latest stable version
-of [Android Studio](https://developer.android.com/studio).
-You can clone this repository or import the
-project from Android Studio following the steps
-[here](https://developer.android.com/jetpack/compose/setup#sample).
+SmartNews 是一个用于学习与求职展示的智能资讯阅读 Android App。本项目基于 Google 官方 JetNews Compose 示例进行二次开发；当前阶段专注于建立稳定的品牌化工程基线。
 
-## Screenshots
+项目改造方案见：[SmartNews Android 项目方案](SmartNews_Android_Project_Plan.md)。
 
-<img src="screenshots/screenshots.png" alt="Screenshot">
+## 当前功能
 
-## Features
+- 本地模拟资讯流与文章阅读
+- 手机与平板自适应布局
+- 首页、文章详情与兴趣偏好的可运行导航
+- 浅色与深色 Material 3 主题
 
-This sample contains three screens: a list of posts, a detail page for a post, and a page to
-subscribe to topics of interest. The navigation from the list of posts to the interests
-screen uses a navigation drawer.
+当前仍使用 `FakePostsRepository` 提供本地模拟数据，尚未接入真实新闻服务或本地数据库。
 
-### App scaffolding
+## 技术栈
 
-Package [`com.example.jetnews.ui`][1]
+- Kotlin
+- Jetpack Compose
+- Material 3
+- Navigation 3
 
-[`JetnewsApp.kt`][2] sets up the app's navigation state and the modal drawer used for navigation
-on smaller windows.
+## 后续路线
 
-[`JetnewsNavDisplay.kt`][3] displays the primary content of the app: the list of posts, the
-posts themselves, and the interests page. It uses a list-detail scene strategy to adaptively
-display more or less content depending on the window size.
+- MVVM + StateFlow + Retrofit
+- 搜索与分类浏览
+- Room 收藏与阅读历史
+- 缓存与分页加载
+- 通知深链接
+- 可选 AI 摘要
 
-<img src="screenshots/jetnews_all_screens.png" alt="Screenshot">
+## 开发说明
 
-[1]: app/src/main/java/com/example/jetnews/ui
-[2]: app/src/main/java/com/example/jetnews/ui/JetnewsApp.kt
-[3]: app/src/main/java/com/example/jetnews/ui/JetnewsNavDisplay.kt
+本阶段不迁移 Kotlin 包名，仍保留 `com.example.jetnews`，以避免在品牌化基线阶段影响 Manifest、深链接、Glance Widget 和既有导航路径；包名迁移将在后续单独规划与验证。
 
-### Main post list
-
-Package [`com.example.jetnews.ui.home`][4]
-
-This screen shows how to create different custom Composable functions and combine them in a list
-that scrolls vertically and horizontally.
-
-See how to:
-
-* Use `Row`s and `Column`s to arrange the contents of the UI
-* Add a top app bar that elevates as the user scrolls
-* Use Material's `Typography` and `ColorScheme` to style the text
-* Use tonal elevation to make the `Card`s stand out from the background
-
-[4]: app/src/main/java/com/example/jetnews/ui/home
-
-### Post detail
-
-Package [`com.example.jetnews.ui.post`][5]
-
-This screen dives into the Text API, showing how to use different fonts than the ones defined in
-[`Typography`][6]. It also adds a bottom app bar, with custom actions.
-
-[5]: app/src/main/java/com/example/jetnews/ui/post
-[6]: app/src/main/java/com/example/jetnews/ui/theme/Type.kt
-
-### Interests screen
-
-Package [`com.example.jetnews.ui.interests`][7]
-
-This screens shows how to use Tabs and switch content depending on the selected tab. It
-also includes a custom checkbox button, [SelectTopicButton][8]
-that uses a `Toggleable` composable function to provide
-the on/off behaviour and semantics, while drawing a custom UI. The UI of the button is partly
-drawn with low-level primitives and partly overlaying images. See also how to visualize
-on and off, light and dark version in the Android Studio Preview.
-
-[7]: app/src/main/java/com/example/jetnews/ui/interests
-[8]: app/src/main/java/com/example/jetnews/ui/interests/SelectTopicButton.kt
-
-### AppWidget powered by Glance
-
-Package [`com.example.jetnews.glance`][9]
-
-This package shows how to use Glance and write compose style code for AppWidgets.
-
-See how to:
-* Use `Row`, `Column`, `LazyColumn` to arrange the contents of the UI
-* Use a repository from your existing app to load data for the widget and perform updates
-* Configure `android:updatePeriodMillis` to periodically refresh the widget
-* Use `androidx.glance:glance-material3` library to create a custom color scheme with `GlanceTheme`
-and use dynamic colors when supported
-* Tint `Image`s to match the color scheme
-* Launch an activity on click using `actionStartActivity`
-
-[9]: app/src/main/java/com/example/jetnews/glance
-
-### Data
-
-The data in the sample is static, held in the `com.example.jetnews.data` package.
-
-### Instrumented and Robolectric tests
-
-UI tests can be run on device/emulators or on JVM with Robolectric.
-
-* To run Instrumented tests use the "Instrumented tests" run configuration or run the `./gradlew connectedCheck` command.
-* To run tests with Robolectric use the "Robolectric tests" run configuration or run the `./gradlew testDebug` command.
+本项目保留原 JetNews 示例所需的 Apache License 与版权声明。原始示例版权归 The Android Open Source Project 所有；本仓库的改造仅用于学习和二次开发。
 
 ## License
 

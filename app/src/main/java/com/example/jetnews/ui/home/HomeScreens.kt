@@ -19,7 +19,6 @@ package com.example.jetnews.ui.home
 import android.content.Context
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import android.widget.Toast
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -70,10 +69,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -608,7 +605,7 @@ private fun submitSearch(onSearchInputChanged: (String) -> Unit, context: Contex
     onSearchInputChanged("")
     Toast.makeText(
         context,
-        "Search is not yet implemented",
+        context.getString(R.string.search_not_available),
         Toast.LENGTH_SHORT,
     ).show()
 }
@@ -629,12 +626,10 @@ private fun HomeTopAppBar(
     val title = stringResource(id = R.string.app_name)
     CenterAlignedTopAppBar(
         title = {
-            Image(
-                painter = painterResource(R.drawable.ic_jetnews_wordmark),
-                contentDescription = title,
-                contentScale = ContentScale.Inside,
-                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
-                modifier = Modifier.fillMaxWidth(),
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary,
             )
         },
         navigationIcon = {
@@ -649,7 +644,7 @@ private fun HomeTopAppBar(
             IconButton(onClick = {
                 Toast.makeText(
                     context,
-                    "Search is not yet implemented in this configuration",
+                    context.getString(R.string.search_not_available),
                     Toast.LENGTH_LONG,
                 ).show()
             }) {

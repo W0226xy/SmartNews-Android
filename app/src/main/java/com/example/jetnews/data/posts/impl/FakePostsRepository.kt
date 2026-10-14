@@ -32,6 +32,7 @@ import kotlinx.coroutines.withContext
  * Implementation of PostsRepository that returns a hardcoded list of
  * posts with resources after some delay in a background thread.
  */
+// TODO：阶段二保留此实现用于本地演示，并新增远程实现。
 class FakePostsRepository : PostsRepository {
 
     // for now, store these in memory

@@ -45,35 +45,42 @@ import com.example.jetnews.ui.navigation.rememberListDetailSceneStrategy
 import com.example.jetnews.ui.post.PostKey
 import com.example.jetnews.ui.post.postEntry
 
-const val PIVOT_FRACTION_OFFSET = .2f
+const val PIVOT_FRACTION_OFFSET = .2f//返回动画的缩放中心偏移量
 
-@OptIn(ExperimentalAnimationApi::class)
+@OptIn(ExperimentalAnimationApi::class)//显式启用实验性动画 API
 @Composable
 fun JetnewsNavDisplay(
-    navigationState: NavigationState,
-    navigator: Navigator,
-    appContainer: AppContainer,
-    onBack: () -> Unit,
-    isExpandedScreen: Boolean,
-    isBackEnabled: Boolean,
-    openDrawer: () -> Unit,
+    navigationState: NavigationState,//当前页面栈
+    navigator: Navigator,//提供导航操作（如跳转、返回）的工具
+    appContainer: AppContainer,//提供文章、兴趣数据的总容器
+    onBack: () -> Unit,//页面需要返回时调用的函数
+    isExpandedScreen: Boolean,//当前是否为平板/宽屏模式
+    isBackEnabled: Boolean,//当前是否允许系统返回
+    openDrawer: () -> Unit,//页面点击菜单按钮时打开左侧抽屉（目前宽屏用不上）
 ) {
     // Because the entryProvider is used within a `remember` block during NavEntry decoration,
     // using rememberUpdatedState allows the current value to be accessed even as window
     // configuration changes.
+    // 窗口发生变化时，比如竖屏转横屏，后面创建的代码仍然能获取最新的isExpandedScreen
     val currentIsExpandedScreen by rememberUpdatedState(isExpandedScreen)
+    //rememberUpdatedState(isExpandedScreen),保存一个“会自动指向最新值”的状态引用
 
-    val entryProvider = entryProvider {
+    // 注册各个页面的入口配置（Home、Post、Interests），指定各自的数据来源和跳转行为
+    val entryProvider = entryProvider {//把“页面标识”变成真正的界面
         homeEntry(
-            postsRepository = appContainer.postsRepository,
-            isExpandedScreen = { currentIsExpandedScreen },
+            postsRepository = appContainer.postsRepository,//首页需要显示文章列表，所以把文章仓库传进去
+            isExpandedScreen = { currentIsExpandedScreen },//判断是手机还是平板，是否需要双栏显示
             openDrawer = openDrawer,
-            navigateToPost = { navigator.navigate(PostKey(it), popUpTo = PopUpTo(HomeKey)) },
+            navigateToPost = { navigator.navigate(PostKey(it), popUpTo = PopUpTo(HomeKey)) },//用户点击文章时处理逻辑
+            //比如点击了新闻卡片，home页面会传navigate(PostKey(it)),这个it是文章id
+            //PostKey(it)表示跳转到文章详情页，此时导航状态从[HomeKey]变为[HomeKey, PostKey(it)]
+            //PopUpTo(HomeKey)表示从首页跳转时清掉中间的页面
         )
         postEntry(
             postsRepository = appContainer.postsRepository,
             isExpandedScreen = { currentIsExpandedScreen },
-            onBack = navigator::goUp,
+            onBack = navigator::goUp,//文章详情页返回时，回到上一个页面（即首页）
+            //navigator.goUp()会弹出当前栈顶的PostKey，恢复导航栈为[HomeKey]
         )
         interestsEntry(
             interestsRepository = appContainer.interestsRepository,
@@ -84,6 +91,7 @@ fun JetnewsNavDisplay(
 
     val navEntries = navigationState.toDecoratedEntries(entryProvider = entryProvider)
 
+    //会启用“列表—详情双栏模式”
     val listDetailSceneStrategy = rememberListDetailSceneStrategy<NavKey>(isExpandedScreen)
 
     SharedTransitionLayout {
@@ -104,7 +112,7 @@ fun JetnewsNavDisplay(
                 backInfo = previousSceneInfos,
             )
 
-            NavigationBackHandler(
+            NavigationBackHandler(//返回键处理
                 state = navigationEventState,
                 isBackEnabled = isBackEnabled && scene.previousEntries.isNotEmpty(),
                 onBackCompleted = {

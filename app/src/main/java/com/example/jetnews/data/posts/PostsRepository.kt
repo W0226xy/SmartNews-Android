@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.Flow
 /**
  * Interface to the Posts data layer.
  */
+// TODO：阶段二由 ViewModel 通过此接口接入远程数据源。
 interface PostsRepository {
 
     /**

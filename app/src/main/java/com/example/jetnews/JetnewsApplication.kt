@@ -30,6 +30,8 @@ class JetnewsApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // 初始化应用容器，用于提供依赖注入
+        //container 中集中保存数据层对象，例如文章 Repository、兴趣 Repository
         container = AppContainerImpl(this)
     }
 }
