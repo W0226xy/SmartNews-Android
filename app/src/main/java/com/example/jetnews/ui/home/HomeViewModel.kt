@@ -19,177 +19,106 @@ package com.example.jetnews.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.jetnews.R
 import com.example.jetnews.data.Result
 import com.example.jetnews.data.posts.PostsRepository
 import com.example.jetnews.model.PostsFeed
-import com.example.jetnews.utils.ErrorMessage
-import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/**
- * UI state for the Home screen.
- *
- * This is derived from [HomeViewModelState], but split into two possible subclasses to more
- * precisely represent the state available to render the UI.
- */
+/** 首页渲染所需的最小状态集合。 */
 sealed interface HomeUiState {
+    data object Loading : HomeUiState
 
-    val isLoading: Boolean
-    val errorMessages: List<ErrorMessage>
-    val searchInput: String
-
-    /**
-     * There are no posts to render.
-     *
-     * This could either be because they are still loading or they failed to load, and we are
-     * waiting to reload them.
-     */
-    data class NoPosts(override val isLoading: Boolean, override val errorMessages: List<ErrorMessage>, override val searchInput: String) :
-        HomeUiState
-
-    /**
-     * There are posts to render, as contained in [postsFeed].
-     */
-    data class HasPosts(
+    data class Success(
         val postsFeed: PostsFeed,
         val favorites: Set<String>,
-        override val isLoading: Boolean,
-        override val errorMessages: List<ErrorMessage>,
-        override val searchInput: String,
+        val isRefreshing: Boolean = false,
+        val searchInput: String = "",
     ) : HomeUiState
+
+    data class Error(val message: String) : HomeUiState
 }
 
-/**
- * An internal representation of the Home screen state, in a raw form
- */
-private data class HomeViewModelState(
-    val postsFeed: PostsFeed? = null,
-    val favorites: Set<String> = emptySet(),
-    val isLoading: Boolean = false,
-    val errorMessages: List<ErrorMessage> = emptyList(),
-    val searchInput: String = "",
-) {
-
-    /**
-     * Converts this [HomeViewModelState] into a more strongly typed [HomeUiState] for driving
-     * the ui.
-     */
-    fun toUiState(): HomeUiState = if (postsFeed == null) {
-        HomeUiState.NoPosts(
-            isLoading = isLoading,
-            errorMessages = errorMessages,
-            searchInput = searchInput,
-        )
-    } else {
-        HomeUiState.HasPosts(
-            postsFeed = postsFeed,
-            favorites = favorites,
-            isLoading = isLoading,
-            errorMessages = errorMessages,
-            searchInput = searchInput,
-        )
-    }
-}
-
-/**
- * ViewModel that handles the business logic of the Home screen
- */
+/** 负责首页文章数据和用户事件，不持有 Compose 或 Android View 对象。 */
 class HomeViewModel(private val postsRepository: PostsRepository) : ViewModel() {
 
-    private val viewModelState = MutableStateFlow(
-        HomeViewModelState(
-            isLoading = true,
-        ),
-    )
+    private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
+    val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    // UI state exposed to the UI
-    val uiState = viewModelState
-        .map(HomeViewModelState::toUiState)
-        .stateIn(
-            viewModelScope,
-            SharingStarted.Eagerly,
-            viewModelState.value.toUiState(),
-        )
+    private val favorites = MutableStateFlow<Set<String>>(emptySet())
 
     init {
-        refreshPosts()
-
-        // Observe for favorite changes in the repo layer
-        viewModelScope.launch {
-            postsRepository.observeFavorites().collect { favorites ->
-                viewModelState.update { it.copy(favorites = favorites) }
-            }
-        }
+        observeFavorites()
+        reload()
     }
 
-    /**
-     * Refresh posts and update the UI state accordingly
-     */
-    fun refreshPosts() {
-        // Ui state is refreshing
-        viewModelState.update { it.copy(isLoading = true) }
+    /** 从仓库重新加载文章；阶段三替换远程实现后页面无需改动。 */
+    fun reload() {
+        val currentState = _uiState.value
+        if (currentState is HomeUiState.Success) {
+            _uiState.value = currentState.copy(isRefreshing = true)
+        } else {
+            _uiState.value = HomeUiState.Loading
+        }
 
         viewModelScope.launch {
-            val result = postsRepository.getPostsFeed()
-            viewModelState.update {
-                when (result) {
-                    is Result.Success -> it.copy(postsFeed = result.data, isLoading = false)
+            try {
+                when (val result = postsRepository.getPostsFeed()) {
+                    is Result.Success -> {
+                        _uiState.value = HomeUiState.Success(
+                            postsFeed = result.data,
+                            favorites = favorites.value,
+                            searchInput = (currentState as? HomeUiState.Success)?.searchInput.orEmpty(),
+                        )
+                    }
 
                     is Result.Error -> {
-                        val errorMessages = it.errorMessages + ErrorMessage(
-                            id = UUID.randomUUID().mostSignificantBits,
-                            messageId = R.string.load_error,
+                        _uiState.value = HomeUiState.Error(
+                            result.exception.message ?: "暂时无法更新资讯",
                         )
-                        it.copy(errorMessages = errorMessages, isLoading = false)
                     }
                 }
+            } catch (exception: Exception) {
+                _uiState.value = HomeUiState.Error(
+                    exception.message ?: "暂时无法更新资讯",
+                )
             }
         }
     }
 
-    /**
-     * Toggle favorite of a post
-     */
     fun toggleFavourite(postId: String) {
         viewModelScope.launch {
             postsRepository.toggleFavorite(postId)
         }
     }
 
-    /**
-     * Notify that an error was displayed on the screen
-     */
-    fun errorShown(errorId: Long) {
-        viewModelState.update { currentUiState ->
-            val errorMessages = currentUiState.errorMessages.filterNot { it.id == errorId }
-            currentUiState.copy(errorMessages = errorMessages)
-        }
-    }
-
-    /**
-     * Notify that the user updated the search query
-     */
     fun onSearchInputChanged(searchInput: String) {
-        viewModelState.update {
-            it.copy(searchInput = searchInput)
+        _uiState.update { state ->
+            if (state is HomeUiState.Success) state.copy(searchInput = searchInput) else state
         }
     }
 
-    /**
-     * Factory for HomeViewModel that takes PostsRepository as a dependency
-     */
-    companion object {
-        fun provideFactory(postsRepository: PostsRepository): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return HomeViewModel(postsRepository) as T
+    private fun observeFavorites() {
+        viewModelScope.launch {
+            postsRepository.observeFavorites().collect { updatedFavorites ->
+                favorites.value = updatedFavorites
+                _uiState.update { state ->
+                    if (state is HomeUiState.Success) state.copy(favorites = updatedFavorites) else state
+                }
             }
         }
+    }
+
+    companion object {
+        /** 用已有 AppContainer 提供的仓库创建 ViewModel。 */
+        fun provideFactory(postsRepository: PostsRepository): ViewModelProvider.Factory =
+            object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                    HomeViewModel(postsRepository) as T
+            }
     }
 }

@@ -16,6 +16,8 @@
 
 package com.example.jetnews.ui.post
 
+import android.content.Intent
+import android.net.Uri
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -41,6 +43,7 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -49,6 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.FirstBaseline
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -75,6 +79,7 @@ import com.example.jetnews.model.Paragraph
 import com.example.jetnews.model.ParagraphType
 import com.example.jetnews.model.Post
 import com.example.jetnews.ui.theme.JetnewsTheme
+import coil.compose.AsyncImage
 
 private val defaultSpacerSize = 16.dp
 
@@ -106,6 +111,7 @@ fun LazyListScope.postContentItems(post: Post) {
         }
     }
     item { PostMetadata(post.metadata, Modifier.padding(bottom = 24.dp)) }
+    item { OriginalArticleButton(post.url) }
     items(post.paragraphs) { Paragraph(paragraph = it) }
 }
 
@@ -115,12 +121,30 @@ private fun PostHeaderImage(post: Post) {
         .heightIn(min = 180.dp)
         .fillMaxWidth()
         .clip(shape = MaterialTheme.shapes.large)
-    Image(
-        painter = painterResource(post.imageId),
+    AsyncImage(
+        model = post.imageUrl,
         contentDescription = null, // decorative
         modifier = imageModifier,
         contentScale = ContentScale.Crop,
+        placeholder = painterResource(post.imageId),
+        error = painterResource(post.imageId),
+        fallback = painterResource(post.imageId),
     )
+}
+
+@Composable
+private fun OriginalArticleButton(url: String) {
+    if (!url.startsWith("https://") && !url.startsWith("http://")) return
+
+    val context = LocalContext.current
+    TextButton(onClick = {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        if (intent.resolveActivity(context.packageManager) != null) {
+            context.startActivity(intent)
+        }
+    }) {
+        Text(stringResource(R.string.post_open_original))
+    }
 }
 
 @Composable

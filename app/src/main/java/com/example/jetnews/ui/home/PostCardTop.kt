@@ -16,7 +16,6 @@
 
 package com.example.jetnews.ui.home
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -39,6 +38,7 @@ import com.example.jetnews.data.posts.impl.posts
 import com.example.jetnews.model.Post
 import com.example.jetnews.ui.theme.JetnewsTheme
 import com.example.jetnews.utils.CompletePreviews
+import coil.compose.AsyncImage
 
 @Composable
 fun PostCardTop(post: Post, modifier: Modifier = Modifier) {
@@ -53,11 +53,14 @@ fun PostCardTop(post: Post, modifier: Modifier = Modifier) {
             .heightIn(min = 180.dp)
             .fillMaxWidth()
             .clip(shape = MaterialTheme.shapes.large)
-        Image(
-            painter = painterResource(post.imageId),
+        AsyncImage(
+            model = post.imageUrl,
             contentDescription = null, // decorative
             modifier = imageModifier,
             contentScale = ContentScale.Crop,
+            placeholder = painterResource(post.imageId),
+            error = painterResource(post.imageId),
+            fallback = painterResource(post.imageId),
         )
         Spacer(Modifier.height(16.dp))
 

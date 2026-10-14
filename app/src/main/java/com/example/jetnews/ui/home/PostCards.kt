@@ -17,7 +17,6 @@
 package com.example.jetnews.ui.home
 
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -50,6 +49,7 @@ import com.example.jetnews.data.posts.impl.post3
 import com.example.jetnews.model.Post
 import com.example.jetnews.ui.theme.JetnewsTheme
 import com.example.jetnews.ui.utils.BookmarkButton
+import coil.compose.AsyncImage
 
 @Composable
 fun AuthorAndReadTime(post: Post, modifier: Modifier = Modifier) {
@@ -67,12 +67,15 @@ fun AuthorAndReadTime(post: Post, modifier: Modifier = Modifier) {
 
 @Composable
 fun PostImage(post: Post, modifier: Modifier = Modifier) {
-    Image(
-        painter = painterResource(post.imageThumbId),
+    AsyncImage(
+        model = post.imageUrl,
         contentDescription = null, // decorative
         modifier = modifier
             .size(40.dp, 40.dp)
             .clip(MaterialTheme.shapes.small),
+        placeholder = painterResource(post.imageThumbId),
+        error = painterResource(post.imageThumbId),
+        fallback = painterResource(post.imageThumbId),
     )
 }
 

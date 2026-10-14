@@ -24,6 +24,7 @@ data class Post(
     val title: String,
     val subtitle: String? = null,
     val url: String,
+    val imageUrl: String? = null,
     val publication: Publication? = null,
     val metadata: Metadata,
     val paragraphs: List<Paragraph> = emptyList(),

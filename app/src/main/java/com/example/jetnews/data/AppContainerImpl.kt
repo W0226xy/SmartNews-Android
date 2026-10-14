@@ -19,8 +19,13 @@ package com.example.jetnews.data
 import android.content.Context
 import com.example.jetnews.data.interests.InterestsRepository
 import com.example.jetnews.data.interests.impl.FakeInterestsRepository
+import com.example.jetnews.data.remote.SpaceflightNewsService
 import com.example.jetnews.data.posts.PostsRepository
-import com.example.jetnews.data.posts.impl.FakePostsRepository
+import com.example.jetnews.data.posts.impl.RemotePostsRepository
+import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
+import retrofit2.Retrofit
+import retrofit2.converter.kotlinx.serialization.asConverterFactory
 
 /**
  * Dependency Injection container at the application level.
@@ -41,11 +46,25 @@ class AppContainerImpl(private val applicationContext: Context) : AppContainer {
     // 它创建并持有应用中实际使用的仓库实例。
     // 两个仓库都通过 by lazy 懒加载：只有第一次访问时才创建实例，
     // 同一个实例在应用整个生命周期中共享。
+    private val spaceflightNewsService: SpaceflightNewsService by lazy {
+        val json = Json { ignoreUnknownKeys = true }
+        Retrofit.Builder()
+            .baseUrl(SPACEFLIGHT_BASE_URL)
+            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+            .build()
+            .create(SpaceflightNewsService::class.java)
+    }
+
     override val postsRepository: PostsRepository by lazy {
-        FakePostsRepository()
+        // 正式运行时使用远程仓库；测试可继续显式注入 FakePostsRepository。
+        RemotePostsRepository(spaceflightNewsService)
     }
     //by lazy{}是Kotlin 的属性委托语法，作用是：第一次使用这个变量时才创建对象，之后一直复用第一次创建的对象。
     override val interestsRepository: InterestsRepository by lazy {
         FakeInterestsRepository()
+    }
+
+    private companion object {
+        const val SPACEFLIGHT_BASE_URL = "https://api.spaceflightnewsapi.net/v4/"
     }
 }

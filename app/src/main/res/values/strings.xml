@@ -47,6 +47,7 @@
     <string name="post_share_post">分享资讯</string>
     <string name="post_min_read">%1$s · %2$d 分钟阅读</string>
     <string name="post_not_found">未找到这篇资讯</string>
+    <string name="post_open_original">在原网站阅读</string>
 
     <!-- Interests Screen -->
     <string name="interests_title">兴趣偏好</string>

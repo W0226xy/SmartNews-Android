@@ -49,8 +49,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -62,10 +60,8 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -93,7 +89,6 @@ import com.example.jetnews.data.posts.impl.BlockingFakePostsRepository
 import com.example.jetnews.deeplink.util.DeepLinkPattern
 import com.example.jetnews.model.Post
 import com.example.jetnews.model.PostsFeed
-import com.example.jetnews.ui.components.JetnewsSnackbarHost
 import com.example.jetnews.ui.modifiers.interceptKey
 import com.example.jetnews.ui.navigation.ListDetailScene
 import com.example.jetnews.ui.theme.JetnewsTheme
@@ -152,7 +147,6 @@ fun EntryProviderScope<NavKey>.homeEntry(
  * @param isExpandedScreen (state) whether the screen is expanded
  * @param openDrawer (event) request opening the app drawer
  * @param navigateToPost (event) request navigation to Post screen
- * @param snackbarHostState (state) state for the [Scaffold] component on this screen
  */
 @Composable
 fun HomeScreen(
@@ -160,7 +154,6 @@ fun HomeScreen(
     isExpandedScreen: Boolean,
     openDrawer: () -> Unit,
     navigateToPost: (String) -> Unit,
-    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     // UiState of the HomeScreen
     val uiState by homeViewModel.uiState.collectAsStateWithLifecycle()
@@ -170,13 +163,10 @@ fun HomeScreen(
         showTopAppBar = !isExpandedScreen,
         onToggleFavorite = { homeViewModel.toggleFavourite(it) },
         onSelectPost = { navigateToPost(it) },
-        onRefreshPosts = { homeViewModel.refreshPosts() },
-        onErrorDismiss = { homeViewModel.errorShown(it) },
+        onRefreshPosts = homeViewModel::reload,
         openDrawer = openDrawer,
         homeListLazyListState = rememberLazyListState(),
-        snackbarHostState = snackbarHostState,
         onSearchInputChanged = { homeViewModel.onSearchInputChanged(it) },
-        searchInput = uiState.searchInput,
     )
 }
 
@@ -190,21 +180,16 @@ fun HomeFeedScreen(
     onToggleFavorite: (String) -> Unit,
     onSelectPost: (String) -> Unit,
     onRefreshPosts: () -> Unit,
-    onErrorDismiss: (Long) -> Unit,
     openDrawer: () -> Unit,
     homeListLazyListState: LazyListState,
-    snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier,
-    searchInput: String = "",
     onSearchInputChanged: (String) -> Unit,
 ) {
     HomeScreenWithList(
         uiState = uiState,
         showTopAppBar = showTopAppBar,
         onRefreshPosts = onRefreshPosts,
-        onErrorDismiss = onErrorDismiss,
         openDrawer = openDrawer,
-        snackbarHostState = snackbarHostState,
         modifier = modifier,
     ) { hasPostsUiState, contentPadding, contentModifier ->
         PostList(
@@ -216,7 +201,7 @@ fun HomeFeedScreen(
             contentPadding = contentPadding,
             modifier = contentModifier,
             state = homeListLazyListState,
-            searchInput = searchInput,
+            searchInput = hasPostsUiState.searchInput,
             onSearchInputChanged = onSearchInputChanged,
         )
     }
@@ -234,12 +219,10 @@ private fun HomeScreenWithList(
     uiState: HomeUiState,
     showTopAppBar: Boolean,
     onRefreshPosts: () -> Unit,
-    onErrorDismiss: (Long) -> Unit,
     openDrawer: () -> Unit,
-    snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier,
     hasPostsContent: @Composable (
-        uiState: HomeUiState.HasPosts,
+        uiState: HomeUiState.Success,
         contentPadding: PaddingValues,
         modifier: Modifier,
     ) -> Unit,
@@ -247,7 +230,6 @@ private fun HomeScreenWithList(
     val topAppBarState = rememberTopAppBarState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(topAppBarState)
     Scaffold(
-        snackbarHost = { JetnewsSnackbarHost(hostState = snackbarHostState) },
         topBar = {
             if (showTopAppBar) {
                 HomeTopAppBar(
@@ -260,117 +242,65 @@ private fun HomeScreenWithList(
     ) { innerPadding ->
         val contentModifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
 
-        LoadingContent(
-            modifier = Modifier.padding(innerPadding),
-            empty = when (uiState) {
-                is HomeUiState.HasPosts -> false
-                is HomeUiState.NoPosts -> uiState.isLoading
-            },
-            emptyContent = { FullScreenLoading() },
-            loading = uiState.isLoading,
-            onRefresh = onRefreshPosts,
-            content = {
-                when (uiState) {
-                    is HomeUiState.HasPosts ->
-                        hasPostsContent(uiState, innerPadding, contentModifier)
+        when (uiState) {
+            HomeUiState.Loading -> FullScreenLoading()
 
-                    is HomeUiState.NoPosts -> {
-                        if (uiState.errorMessages.isEmpty()) {
-                            // if there are no posts, and no error, let the user refresh manually
-                            TextButton(
-                                onClick = onRefreshPosts,
-                                modifier
-                                    .padding(innerPadding)
-                                    .fillMaxSize(),
-                            ) {
-                                Text(
-                                    stringResource(id = R.string.home_tap_to_load_content),
-                                    textAlign = TextAlign.Center,
-                                )
-                            }
-                        } else {
-                            // there's currently an error showing, don't show any content
-                            Box(
-                                contentModifier
-                                    .padding(innerPadding)
-                                    .fillMaxSize(),
-                            ) { /* empty screen */ }
-                        }
-                    }
-                }
-            },
-        )
-    }
-
-    // Process one error message at a time and show them as Snackbars in the UI
-    if (uiState.errorMessages.isNotEmpty()) {
-        // Remember the errorMessage to display on the screen
-        val errorMessage = remember(uiState) { uiState.errorMessages[0] }
-
-        // Get the text to show on the message from resources
-        val errorMessageText: String = stringResource(errorMessage.messageId)
-        val retryMessageText = stringResource(id = R.string.retry)
-
-        // If onRefreshPosts or onErrorDismiss change while the LaunchedEffect is running,
-        // don't restart the effect and use the latest lambda values.
-        val onRefreshPostsState by rememberUpdatedState(onRefreshPosts)
-        val onErrorDismissState by rememberUpdatedState(onErrorDismiss)
-
-        // Effect running in a coroutine that displays the Snackbar on the screen
-        // If there's a change to errorMessageText, retryMessageText or snackbarHostState,
-        // the previous effect will be cancelled and a new one will start with the new values
-        LaunchedEffect(errorMessageText, retryMessageText, snackbarHostState) {
-            val snackbarResult = snackbarHostState.showSnackbar(
-                message = errorMessageText,
-                actionLabel = retryMessageText,
+            is HomeUiState.Error -> ErrorContent(
+                message = uiState.message,
+                onRetry = onRefreshPosts,
+                modifier = Modifier.padding(innerPadding),
             )
-            if (snackbarResult == SnackbarResult.ActionPerformed) {
-                onRefreshPostsState()
-            }
-            // Once the message is displayed and dismissed, notify the ViewModel
-            onErrorDismissState(errorMessage.id)
+
+            is HomeUiState.Success -> LoadingContent(
+                loading = uiState.isRefreshing,
+                onRefresh = onRefreshPosts,
+                modifier = Modifier.padding(innerPadding),
+                content = { hasPostsContent(uiState, innerPadding, contentModifier) },
+            )
         }
     }
 }
 
 /**
- * Display an initial empty state or swipe to refresh content.
- *
- * @param empty (state) when true, display [emptyContent]
- * @param emptyContent (slot) the content to display for the empty state
- * @param loading (state) when true, display a loading spinner over [content]
- * @param onRefresh (event) event to request refresh
- * @param content (slot) the main content to show
+ * Display content with pull-to-refresh.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LoadingContent(
-    empty: Boolean,
-    emptyContent: @Composable () -> Unit,
     loading: Boolean,
     onRefresh: () -> Unit,
     content: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (empty) {
-        emptyContent()
-    } else {
-        val refreshState = rememberPullToRefreshState()
-        PullToRefreshBox(
-            isRefreshing = loading,
-            onRefresh = onRefresh,
-            content = { content() },
-            state = refreshState,
-            indicator = {
-                Indicator(
-                    modifier = modifier
-                        .align(Alignment.TopCenter)
-                        .padding(),
-                    isRefreshing = loading,
-                    state = refreshState,
-                )
-            },
-        )
+    val refreshState = rememberPullToRefreshState()
+    PullToRefreshBox(
+        isRefreshing = loading,
+        onRefresh = onRefresh,
+        content = { content() },
+        state = refreshState,
+        indicator = {
+            Indicator(
+                modifier = modifier
+                    .align(Alignment.TopCenter)
+                    .padding(),
+                isRefreshing = loading,
+                state = refreshState,
+            )
+        },
+    )
+}
+
+@Composable
+private fun ErrorContent(message: String, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(text = message, textAlign = TextAlign.Center)
+        TextButton(onClick = onRetry) {
+            Text(stringResource(R.string.retry))
+        }
     }
 }
 
@@ -669,21 +599,17 @@ fun PreviewHomeListDrawerScreen() {
     }
     JetnewsTheme {
         HomeFeedScreen(
-            uiState = HomeUiState.HasPosts(
+            uiState = HomeUiState.Success(
                 postsFeed = postsFeed,
                 favorites = emptySet(),
-                isLoading = false,
-                errorMessages = emptyList(),
                 searchInput = "",
             ),
             showTopAppBar = false,
             onToggleFavorite = {},
             onSelectPost = {},
             onRefreshPosts = {},
-            onErrorDismiss = {},
             openDrawer = {},
             homeListLazyListState = rememberLazyListState(),
-            snackbarHostState = SnackbarHostState(),
             onSearchInputChanged = {},
         )
     }
@@ -703,21 +629,17 @@ fun PreviewHomeListNavRailScreen() {
     }
     JetnewsTheme {
         HomeFeedScreen(
-            uiState = HomeUiState.HasPosts(
+            uiState = HomeUiState.Success(
                 postsFeed = postsFeed,
                 favorites = emptySet(),
-                isLoading = false,
-                errorMessages = emptyList(),
                 searchInput = "",
             ),
             showTopAppBar = true,
             onToggleFavorite = {},
             onSelectPost = {},
             onRefreshPosts = {},
-            onErrorDismiss = {},
             openDrawer = {},
             homeListLazyListState = rememberLazyListState(),
-            snackbarHostState = SnackbarHostState(),
             onSearchInputChanged = {},
         )
     }
