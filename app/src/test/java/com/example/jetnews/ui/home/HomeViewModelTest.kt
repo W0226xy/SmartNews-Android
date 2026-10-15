@@ -19,15 +19,25 @@ package com.example.jetnews.ui.home
 import com.example.jetnews.data.Result
 import com.example.jetnews.data.posts.PostsRepository
 import com.example.jetnews.data.posts.impl.FakePostsRepository
+import com.example.jetnews.data.posts.impl.post1
+import com.example.jetnews.data.posts.impl.posts
+import com.example.jetnews.data.preferences.NewsInterest
+import com.example.jetnews.data.preferences.NewsPreferencesRepository
+import com.example.jetnews.data.preferences.RecommendationTarget
+import com.example.jetnews.data.preferences.UpdateInterestsResult
 import com.example.jetnews.model.Post
 import com.example.jetnews.model.PostsFeed
+import java.io.IOException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -53,7 +63,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun reload_withFakePostsRepository_emitsSuccess() = runTest {
+    fun initialLoad_withFakePostsRepository_emitsSuccess() = runTest {
         val viewModel = HomeViewModel(FakePostsRepository())
 
         val state = viewModel.uiState.filterIsInstance<HomeUiState.Success>().first()
@@ -70,6 +80,99 @@ class HomeViewModelTest {
 
         assertEquals("测试加载失败", state.message)
     }
+
+    @Test
+    fun refresh_callsRepositoryAgain_andUpdatesFeedAfterSuccess() = runTest {
+        val updatedFeed = posts.copy(highlightedPost = post1.copy(id = "updated-post"))
+        val refreshResult = CompletableDeferred<Result<PostsFeed>>()
+        val repository = ControlledRefreshPostsRepository(
+            initialResult = Result.Success(posts),
+            refreshResult = refreshResult,
+        )
+        val viewModel = HomeViewModel(repository)
+        viewModel.uiState.filterIsInstance<HomeUiState.Success>().first()
+
+        viewModel.refresh()
+
+        val refreshingState = viewModel.uiState.value as HomeUiState.Success
+        assertEquals(2, repository.getPostsFeedCalls)
+        assertTrue(refreshingState.isRefreshing)
+        assertEquals(posts, refreshingState.postsFeed)
+
+        refreshResult.complete(Result.Success(updatedFeed))
+        advanceUntilIdle()
+
+        val refreshedState = viewModel.uiState.value as HomeUiState.Success
+        assertEquals(updatedFeed, refreshedState.postsFeed)
+        assertTrue(!refreshedState.isRefreshing)
+        assertEquals(null, refreshedState.refreshErrorMessage)
+    }
+
+    @Test
+    fun refresh_whenRepositoryFails_keepsOldFeedAndShowsError() = runTest {
+        val refreshResult = CompletableDeferred<Result<PostsFeed>>()
+        val repository = ControlledRefreshPostsRepository(
+            initialResult = Result.Success(posts),
+            refreshResult = refreshResult,
+        )
+        val viewModel = HomeViewModel(repository)
+        viewModel.uiState.filterIsInstance<HomeUiState.Success>().first()
+
+        viewModel.refresh()
+        refreshResult.complete(Result.Error(IOException("刷新失败，请检查网络")))
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value as HomeUiState.Success
+        assertEquals(2, repository.getPostsFeedCalls)
+        assertEquals(posts, state.postsFeed)
+        assertTrue(!state.isRefreshing)
+        assertEquals("刷新失败，请检查网络", state.refreshErrorMessage)
+    }
+
+    @Test
+    fun changingInterests_requestsRecommendationsAgain() = runTest {
+        val refreshResult = CompletableDeferred<Result<PostsFeed>>()
+        val repository = ControlledRefreshPostsRepository(Result.Success(posts), refreshResult)
+        val preferences = MutableNewsPreferencesRepository()
+        val viewModel = HomeViewModel(repository, preferences)
+        viewModel.uiState.filterIsInstance<HomeUiState.Success>().first()
+
+        preferences.setInterests(listOf(NewsInterest.SCIENCE))
+
+        assertEquals(2, repository.getPostsFeedCalls)
+        refreshResult.complete(Result.Success(posts))
+        advanceUntilIdle()
+    }
+}
+
+private class ControlledRefreshPostsRepository(
+    private val initialResult: Result<PostsFeed>,
+    private val refreshResult: CompletableDeferred<Result<PostsFeed>>,
+) : PostsRepository {
+    var getPostsFeedCalls: Int = 0
+        private set
+
+    override suspend fun getPost(postId: String?): Result<Post> =
+        Result.Error(UnsupportedOperationException())
+
+    override suspend fun getPostsFeed(): Result<PostsFeed> {
+        getPostsFeedCalls += 1
+        return if (getPostsFeedCalls == 1) initialResult else refreshResult.await()
+    }
+
+    override fun observeFavoriteIds(): Flow<Set<String>> = flowOf(emptySet())
+
+    override fun observeFavoritePosts(): Flow<List<Post>> = flowOf(emptyList())
+
+    override fun observeReadingHistory(): Flow<List<Post>> = flowOf(emptyList())
+
+    override fun observePostsFeed(): Flow<PostsFeed?> = flowOf(null)
+
+    override suspend fun toggleFavorite(postId: String) = Unit
+
+    override suspend fun toggleFavorite(post: Post) = Unit
+
+    override suspend fun recordPostRead(post: Post) = Unit
 }
 
 private class ThrowingPostsRepository : PostsRepository {
@@ -79,9 +182,37 @@ private class ThrowingPostsRepository : PostsRepository {
     override suspend fun getPostsFeed(): Result<PostsFeed> =
         throw IllegalStateException("测试加载失败")
 
-    override fun observeFavorites(): Flow<Set<String>> = flowOf(emptySet())
+    override fun observeFavoriteIds(): Flow<Set<String>> = flowOf(emptySet())
+
+    override fun observeFavoritePosts(): Flow<List<Post>> = flowOf(emptyList())
+
+    override fun observeReadingHistory(): Flow<List<Post>> = flowOf(emptyList())
 
     override fun observePostsFeed(): Flow<PostsFeed?> = flowOf(null)
 
     override suspend fun toggleFavorite(postId: String) = Unit
+
+    override suspend fun toggleFavorite(post: Post) = Unit
+
+    override suspend fun recordPostRead(post: Post) = Unit
+}
+
+private class MutableNewsPreferencesRepository : NewsPreferencesRepository {
+    private val interests = MutableStateFlow(NewsInterest.default)
+
+    override fun observeSelectedInterests(): Flow<List<NewsInterest>> = interests
+
+    fun setInterests(value: List<NewsInterest>) {
+        interests.value = value
+    }
+
+    override suspend fun updateSelectedInterests(interests: Set<NewsInterest>): UpdateInterestsResult =
+        UpdateInterestsResult.Saved
+
+    override suspend fun nextRecommendationTarget(): RecommendationTarget =
+        RecommendationTarget(interests.value.first(), 1)
+
+    override suspend fun recentArticleIds(): Set<String> = emptySet()
+
+    override suspend fun recordShownArticleIds(articleIds: Collection<String>) = Unit
 }

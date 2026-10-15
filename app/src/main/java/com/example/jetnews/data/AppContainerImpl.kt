@@ -17,9 +17,16 @@
 package com.example.jetnews.data
 
 import android.content.Context
-import com.example.jetnews.data.interests.InterestsRepository
-import com.example.jetnews.data.interests.impl.FakeInterestsRepository
+import androidx.room.Room
+import com.example.jetnews.BuildConfig
+import com.example.jetnews.data.preferences.DataStoreNewsPreferencesRepository
+import com.example.jetnews.data.preferences.NewsPreferencesRepository
+import com.example.jetnews.data.local.JetnewsDatabase
+import com.example.jetnews.data.local.RoomSavedPostsLocalDataSource
+import com.example.jetnews.data.local.SavedPostsLocalDataSource
+import com.example.jetnews.data.posts.impl.GuardianPostsRepository
 import com.example.jetnews.data.remote.SpaceflightNewsService
+import com.example.jetnews.data.remote.GuardianNewsService
 import com.example.jetnews.data.posts.PostsRepository
 import com.example.jetnews.data.posts.impl.RemotePostsRepository
 import kotlinx.serialization.json.Json
@@ -33,7 +40,7 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 interface AppContainer {//interface接口，凡是叫AppContainer的必须提供文章仓库和兴趣仓库
     val postsRepository: PostsRepository//文章仓库接口，用于获取文章数据
     //变量名叫 postsRepository，类型是 PostsRepository
-    val interestsRepository: InterestsRepository//兴趣仓库接口，用于获取兴趣数据
+    val newsPreferencesRepository: NewsPreferencesRepository
 }
 
 /**
@@ -42,12 +49,13 @@ interface AppContainer {//interface接口，凡是叫AppContainer的必须提供
  * Variables are initialized lazily and the same instance is shared across the whole app.
  */
 class AppContainerImpl(private val applicationContext: Context) : AppContainer {
+    private val json = Json { ignoreUnknownKeys = true }
+
     // AppContainerImpl 是 AppContainer 接口的具体实现类
     // 它创建并持有应用中实际使用的仓库实例。
     // 两个仓库都通过 by lazy 懒加载：只有第一次访问时才创建实例，
     // 同一个实例在应用整个生命周期中共享。
     private val spaceflightNewsService: SpaceflightNewsService by lazy {
-        val json = Json { ignoreUnknownKeys = true }
         Retrofit.Builder()
             .baseUrl(SPACEFLIGHT_BASE_URL)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
@@ -55,16 +63,44 @@ class AppContainerImpl(private val applicationContext: Context) : AppContainer {
             .create(SpaceflightNewsService::class.java)
     }
 
-    override val postsRepository: PostsRepository by lazy {
-        // 正式运行时使用远程仓库；测试可继续显式注入 FakePostsRepository。
-        RemotePostsRepository(spaceflightNewsService)
+    private val guardianNewsService: GuardianNewsService by lazy {
+        Retrofit.Builder()
+            .baseUrl(GUARDIAN_BASE_URL)
+            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+            .build()
+            .create(GuardianNewsService::class.java)
     }
-    //by lazy{}是Kotlin 的属性委托语法，作用是：第一次使用这个变量时才创建对象，之后一直复用第一次创建的对象。
-    override val interestsRepository: InterestsRepository by lazy {
-        FakeInterestsRepository()
+
+    private val database: JetnewsDatabase by lazy {
+        Room.databaseBuilder(
+            applicationContext,
+            JetnewsDatabase::class.java,
+            "jetnews.db",
+        )
+            .addMigrations(JetnewsDatabase.MIGRATION_1_2)
+            .build()
+    }
+
+    private val savedPostsLocalDataSource: SavedPostsLocalDataSource by lazy {
+        RoomSavedPostsLocalDataSource(database.savedPostsDao())
+    }
+
+    override val newsPreferencesRepository: NewsPreferencesRepository by lazy {
+        DataStoreNewsPreferencesRepository(applicationContext)
+    }
+
+    override val postsRepository: PostsRepository by lazy {
+        // 正式运行时默认接 Guardian；Spaceflight 代码仍保留以兼容后续切换和测试。
+        GuardianPostsRepository(
+            service = guardianNewsService,
+            savedPostsLocalDataSource = savedPostsLocalDataSource,
+            apiKey = BuildConfig.GUARDIAN_API_KEY,
+            newsPreferencesRepository = newsPreferencesRepository,
+        )
     }
 
     private companion object {
         const val SPACEFLIGHT_BASE_URL = "https://api.spaceflightnewsapi.net/v4/"
+        const val GUARDIAN_BASE_URL = "https://content.guardianapis.com/"
     }
 }

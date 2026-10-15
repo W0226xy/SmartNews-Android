@@ -11,7 +11,7 @@ SmartNews 是一个用于学习与求职展示的智能资讯阅读 Android App�
 - 首页、文章详情与兴趣偏好的可运行导航
 - 浅色与深色 Material 3 主题
 
-当前仍使用 `FakePostsRepository` 提供本地模拟数据，尚未接入真实新闻服务或本地数据库。
+当前默认运行时数据源为 The Guardian Content API，并保留 Spaceflight News API 代码用于兼容与对比验证。
 
 ## 技术栈
 
@@ -30,6 +30,13 @@ SmartNews 是一个用于学习与求职展示的智能资讯阅读 Android App�
 - 可选 AI 摘要
 
 ## 开发说明
+
+### Guardian API Key 配置
+
+1. 在仓库根目录的 `local.properties` 中添加：
+   `GUARDIAN_API_KEY=你的GuardianKey`
+2. `local.properties` 已被 Git 忽略，不会进入版本控制。
+3. App 会通过 `BuildConfig.GUARDIAN_API_KEY` 在运行时读取该值；未配置时会在界面显示清晰错误，而不是崩溃。
 
 本阶段不迁移 Kotlin 包名，仍保留 `com.example.jetnews`，以避免在品牌化基线阶段影响 Manifest、深链接、Glance Widget 和既有导航路径；包名迁移将在后续单独规划与验证。
 

@@ -53,6 +53,7 @@ fun SpaceflightArticleDto.toPostOrNull(): Post? {
                 text = safeSummary.ifBlank { "该来源未提供文章摘要，请在原网站阅读。" },
             ),
         ),
+        isSummaryContent = true,
         imageId = R.drawable.placeholder_4_3,
         imageThumbId = R.drawable.placeholder_1_1,
     )

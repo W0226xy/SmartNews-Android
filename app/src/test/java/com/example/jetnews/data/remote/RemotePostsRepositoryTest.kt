@@ -17,11 +17,15 @@
 package com.example.jetnews.data.remote
 
 import com.example.jetnews.data.Result
+import com.example.jetnews.data.local.SavedPostsLocalDataSource
 import com.example.jetnews.data.posts.impl.RemotePostsRepository
 import com.example.jetnews.data.remote.model.SpaceflightArticleDto
 import com.example.jetnews.data.remote.model.SpaceflightAuthorDto
 import com.example.jetnews.data.remote.model.SpaceflightArticlesResponseDto
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
+import com.example.jetnews.model.Post
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
@@ -68,6 +72,7 @@ class RemotePostsRepositoryTest {
                     SpaceflightArticlesResponseDto(results = listOf(sampleArticle())),
                 ),
             ),
+            EmptySavedPostsLocalDataSource,
         )
 
         val result = repository.getPostsFeed()
@@ -85,6 +90,7 @@ class RemotePostsRepositoryTest {
                     "temporary failure".toResponseBody("application/json".toMediaType()),
                 ),
             ),
+            EmptySavedPostsLocalDataSource,
         )
 
         val result = repository.getPostsFeed()
@@ -100,6 +106,17 @@ private class FakeSpaceflightNewsService(
     override suspend fun getArticles(limit: Int): Response<SpaceflightArticlesResponseDto> = listResponse
 
     override suspend fun getArticle(id: Long): Response<SpaceflightArticleDto> = articleResponse
+}
+
+private object EmptySavedPostsLocalDataSource : SavedPostsLocalDataSource {
+    override fun observeFavoriteIds(): Flow<Set<String>> = flowOf(emptySet())
+    override fun observeFavoritePosts(): Flow<List<Post>> = flowOf(emptyList())
+    override fun observeReadingHistory(): Flow<List<Post>> = flowOf(emptyList())
+    override suspend fun findSavedPost(postId: String): Post? = null
+    override suspend fun isFavorite(postId: String): Boolean = false
+    override suspend fun upsertFavorite(post: Post) = Unit
+    override suspend fun removeFavorite(postId: String) = Unit
+    override suspend fun recordPostRead(post: Post) = Unit
 }
 
 private fun sampleArticle(

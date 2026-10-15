@@ -85,6 +85,7 @@ import androidx.navigation3.runtime.NavKey
 import com.example.jetnews.R
 import com.example.jetnews.data.Result
 import com.example.jetnews.data.posts.PostsRepository
+import com.example.jetnews.data.preferences.NewsPreferencesRepository
 import com.example.jetnews.data.posts.impl.BlockingFakePostsRepository
 import com.example.jetnews.deeplink.util.DeepLinkPattern
 import com.example.jetnews.model.Post
@@ -105,6 +106,7 @@ val HomeDeepLinkPattern = DeepLinkPattern(
 
 fun EntryProviderScope<NavKey>.homeEntry(
     postsRepository: PostsRepository,
+    newsPreferencesRepository: NewsPreferencesRepository,
     isExpandedScreen: () -> Boolean,
     openDrawer: () -> Unit,
     navigateToPost: (String) -> Unit,
@@ -127,7 +129,7 @@ fun EntryProviderScope<NavKey>.homeEntry(
         ),
     ) {
         val homeViewModel: HomeViewModel =
-            viewModel(factory = HomeViewModel.provideFactory(postsRepository))
+            viewModel(factory = HomeViewModel.provideFactory(postsRepository, newsPreferencesRepository))
 
         HomeScreen(
             homeViewModel = homeViewModel,
@@ -163,7 +165,7 @@ fun HomeScreen(
         showTopAppBar = !isExpandedScreen,
         onToggleFavorite = { homeViewModel.toggleFavourite(it) },
         onSelectPost = { navigateToPost(it) },
-        onRefreshPosts = homeViewModel::reload,
+        onRefreshPosts = homeViewModel::refresh,
         openDrawer = openDrawer,
         homeListLazyListState = rememberLazyListState(),
         onSearchInputChanged = { homeViewModel.onSearchInputChanged(it) },
@@ -177,7 +179,7 @@ fun HomeScreen(
 fun HomeFeedScreen(
     uiState: HomeUiState,
     showTopAppBar: Boolean,
-    onToggleFavorite: (String) -> Unit,
+    onToggleFavorite: (Post) -> Unit,
     onSelectPost: (String) -> Unit,
     onRefreshPosts: () -> Unit,
     openDrawer: () -> Unit,
@@ -203,6 +205,9 @@ fun HomeFeedScreen(
             state = homeListLazyListState,
             searchInput = hasPostsUiState.searchInput,
             onSearchInputChanged = onSearchInputChanged,
+            refreshErrorMessage = hasPostsUiState.refreshErrorMessage,
+            recommendationLabel = hasPostsUiState.recommendationLabel,
+            recommendationMessage = hasPostsUiState.recommendationMessage,
         )
     }
 }
@@ -240,7 +245,9 @@ private fun HomeScreenWithList(
         },
         modifier = modifier,
     ) { innerPadding ->
-        val contentModifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+        val contentModifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
 
         when (uiState) {
             HomeUiState.Loading -> FullScreenLoading()
@@ -276,11 +283,12 @@ private fun LoadingContent(
     PullToRefreshBox(
         isRefreshing = loading,
         onRefresh = onRefresh,
+        modifier = modifier.fillMaxSize(),
         content = { content() },
         state = refreshState,
         indicator = {
             Indicator(
-                modifier = modifier
+                modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(),
                 isRefreshing = loading,
@@ -326,18 +334,49 @@ private fun PostList(
     favorites: Set<String>,
     showExpandedSearch: Boolean,
     onPostTapped: (postId: String) -> Unit,
-    onToggleFavorite: (String) -> Unit,
+    onToggleFavorite: (Post) -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
     state: LazyListState = rememberLazyListState(),
     searchInput: String = "",
     onSearchInputChanged: (String) -> Unit,
+    refreshErrorMessage: String? = null,
+    recommendationLabel: String = "为你推荐",
+    recommendationMessage: String? = null,
 ) {
     LazyColumn(
         modifier = modifier,
         contentPadding = contentPadding,
         state = state,
     ) {
+        if (refreshErrorMessage != null) {
+            item {
+                Surface(
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    shape = MaterialTheme.shapes.medium,
+                ) {
+                    Text(
+                        text = refreshErrorMessage,
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+        }
+        if (recommendationMessage != null) {
+            item {
+                Text(
+                    text = recommendationMessage,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
         if (showExpandedSearch) {
             item {
                 HomeSearch(
@@ -347,7 +386,7 @@ private fun PostList(
                 )
             }
         }
-        item { PostListTopSection(postsFeed.highlightedPost, onPostTapped) }
+        item { PostListTopSection(postsFeed.highlightedPost, onPostTapped, recommendationLabel) }
         if (postsFeed.recommendedPosts.isNotEmpty()) {
             item {
                 PostListSimpleSection(
@@ -392,10 +431,14 @@ private fun FullScreenLoading() {
  * @param navigateToPost (event) request navigation to Post screen
  */
 @Composable
-private fun PostListTopSection(post: Post, navigateToPost: (String) -> Unit) {
+private fun PostListTopSection(
+    post: Post,
+    navigateToPost: (String) -> Unit,
+    recommendationLabel: String,
+) {
     Text(
         modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp),
-        text = stringResource(id = R.string.home_top_section_title),
+        text = recommendationLabel,
         style = MaterialTheme.typography.titleMedium,
     )
     PostCardTop(
@@ -418,7 +461,7 @@ private fun PostListSimpleSection(
     posts: List<Post>,
     navigateToPost: (String) -> Unit,
     favorites: Set<String>,
-    onToggleFavorite: (String) -> Unit,
+    onToggleFavorite: (Post) -> Unit,
 ) {
     Column {
         posts.forEach { post ->
@@ -426,7 +469,7 @@ private fun PostListSimpleSection(
                 post = post,
                 navigateToPost = navigateToPost,
                 isFavorite = favorites.contains(post.id),
-                onToggleFavorite = { onToggleFavorite(post.id) },
+                onToggleFavorite = { onToggleFavorite(post) },
             )
             PostListDivider()
         }

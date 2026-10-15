@@ -44,6 +44,8 @@ import com.example.jetnews.ui.navigation.PopUpTo
 import com.example.jetnews.ui.navigation.rememberListDetailSceneStrategy
 import com.example.jetnews.ui.post.PostKey
 import com.example.jetnews.ui.post.postEntry
+import com.example.jetnews.ui.saved.SavedKey
+import com.example.jetnews.ui.saved.savedEntry
 
 const val PIVOT_FRACTION_OFFSET = .2f//返回动画的缩放中心偏移量
 
@@ -69,6 +71,7 @@ fun JetnewsNavDisplay(
     val entryProvider = entryProvider {//把“页面标识”变成真正的界面
         homeEntry(
             postsRepository = appContainer.postsRepository,//首页需要显示文章列表，所以把文章仓库传进去
+            newsPreferencesRepository = appContainer.newsPreferencesRepository,
             isExpandedScreen = { currentIsExpandedScreen },//判断是手机还是平板，是否需要双栏显示
             openDrawer = openDrawer,
             navigateToPost = { navigator.navigate(PostKey(it), popUpTo = PopUpTo(HomeKey)) },//用户点击文章时处理逻辑
@@ -83,9 +86,15 @@ fun JetnewsNavDisplay(
             //navigator.goUp()会弹出当前栈顶的PostKey，恢复导航栈为[HomeKey]
         )
         interestsEntry(
-            interestsRepository = appContainer.interestsRepository,
+            newsPreferencesRepository = appContainer.newsPreferencesRepository,
             isExpandedScreen = { currentIsExpandedScreen },
             openDrawer = openDrawer,
+        )
+        savedEntry(
+            postsRepository = appContainer.postsRepository,
+            isExpandedScreen = { currentIsExpandedScreen },
+            openDrawer = openDrawer,
+            navigateToPost = { navigator.navigate(PostKey(it), popUpTo = PopUpTo(SavedKey)) },
         )
     }
 

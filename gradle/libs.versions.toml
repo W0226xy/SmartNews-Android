@@ -46,6 +46,7 @@ kotlinx-serialization = "1.11.0"
 kotlinx_immutable = "0.5.2"
 ksp = "2.3.12"
 maps-compose = "8.6.0"
+mlkit-translate = "17.0.3"
 # @keep
 minSdk = "24"
 okhttp = "5.5.0"
@@ -54,6 +55,7 @@ robolectric = "4.17"
 roborazzi = "1.74.0"
 rome = "2.1.0"
 room = "2.8.5"
+datastore = "1.2.1"
 retrofit = "2.11.0"
 secrets = "2.0.1"
 spotless = "8.10.2"
@@ -116,6 +118,7 @@ androidx-palette = { module = "androidx.palette:palette", version.ref = "android
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
 androidx-test-core = { module = "androidx.test:core", version.ref = "androidx-test" }
 androidx-test-espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "androidx-test-espresso" }
 androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidx-test-ext-junit" }
@@ -136,6 +139,7 @@ core-jdk-desugaring = { module = "com.android.tools:desugar_jdk_libs", version.r
 dagger-hiltandroidplugin = { module = "com.google.dagger:hilt-android-gradle-plugin", version.ref = "hilt" }
 googlemaps-compose = { module = "com.google.maps.android:maps-compose", version.ref = "maps-compose" }
 googlemaps-maps = { module = "com.google.android.gms:play-services-maps", version.ref = "google-maps" }
+mlkit-translate = { module = "com.google.mlkit:translate", version.ref = "mlkit-translate" }
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
 hilt-android-testing = { module = "com.google.dagger:hilt-android-testing", version.ref = "hilt" }
 hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hilt" }

@@ -25,6 +25,7 @@
     <string name="bookmark">收藏</string>
     <string name="cd_search">搜索资讯</string>
     <string name="cd_interests">兴趣偏好</string>
+    <string name="cd_saved">已保存</string>
     <string name="published_in">发布于：\n%1$s</string>
     <string name="fewer_stories">减少类似资讯？</string>
     <string name="fewer_stories_content">SmartNews 会在后续版本提供此功能</string>
@@ -41,6 +42,15 @@
     <string name="home_search">搜索资讯</string>
     <string name="home_detail_placeholder">选择一篇资讯开始阅读</string>
     <string name="search_not_available">搜索功能将在后续版本提供</string>
+    <string name="saved_title">已保存</string>
+    <string name="saved_tab_favorites">收藏</string>
+    <string name="saved_tab_history">阅读历史</string>
+    <string name="saved_recently_read">最近阅读</string>
+    <string name="saved_detail_placeholder">选择一篇已保存资讯开始阅读</string>
+    <string name="saved_empty_favorites_title">还没有收藏的资讯</string>
+    <string name="saved_empty_favorites_subtitle">在首页或详情页点击收藏后，这里会自动同步显示。</string>
+    <string name="saved_empty_history_title">还没有阅读历史</string>
+    <string name="saved_empty_history_subtitle">打开一篇资讯并成功显示后，这里会按最近阅读时间排序。</string>
 
     <!-- Post Screen -->
     <string name="post_functionality_not_available">此功能将在后续版本提供</string>
@@ -48,9 +58,26 @@
     <string name="post_min_read">%1$s · %2$d 分钟阅读</string>
     <string name="post_not_found">未找到这篇资讯</string>
     <string name="post_open_original">在原网站阅读</string>
+    <string name="post_translate_article">翻译文章</string>
+    <string name="post_show_original">原文</string>
+    <string name="post_show_translation">译文</string>
+    <string name="post_translating">正在翻译文章…</string>
+    <string name="post_downloading_translation_model">正在下载中文翻译模型…</string>
+    <string name="post_translation_disclaimer">由设备端翻译生成，仅供参考</string>
+    <string name="post_translation_retry">重试翻译</string>
+    <string name="post_body_heading">正文</string>
+    <string name="post_summary_heading">文章摘要</string>
+    <string name="post_summary_notice">当前数据源仅提供摘要内容；如需阅读全文，请前往原网站。</string>
 
     <!-- Interests Screen -->
     <string name="interests_title">兴趣偏好</string>
+    <string name="interests_heading">选择你关注的新闻类别</string>
+    <string name="interests_subheading">至少选择一项，首页将根据你的偏好推荐 Guardian 新闻。</string>
+    <string name="interests_selected_count">已选择 %1$d 个兴趣</string>
+    <string name="interests_auto_save">偏好会自动保存</string>
+    <string name="interests_last_interest_warning">请至少保留一个兴趣类别</string>
+    <string name="interests_selected">已选择</string>
+    <string name="interests_not_selected">未选择</string>
     <string name="interests_section_topics">主题</string>
     <string name="interests_section_people">人物</string>
     <string name="interests_section_publications">媒体</string>
@@ -59,5 +86,6 @@
     <string name="cd_navigate_up">返回上一页</string>
     <string name="cd_navigate_home">前往资讯首页</string>
     <string name="cd_navigate_interests">前往兴趣偏好</string>
+    <string name="cd_navigate_saved">前往已保存</string>
 
 </resources>

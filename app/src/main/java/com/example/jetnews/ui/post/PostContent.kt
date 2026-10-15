@@ -89,12 +89,14 @@ fun PostContent(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
     state: LazyListState = rememberLazyListState(),
+    translationBanner: @Composable () -> Unit = {},
 ) {
     LazyColumn(
         contentPadding = contentPadding,
         modifier = modifier.padding(horizontal = defaultSpacerSize),
         state = state,
     ) {
+        item { translationBanner() }
         postContentItems(post)
     }
 }
@@ -105,13 +107,36 @@ fun LazyListScope.postContentItems(post: Post) {
         Spacer(Modifier.height(defaultSpacerSize))
         Text(post.title, style = MaterialTheme.typography.headlineLarge)
         Spacer(Modifier.height(8.dp))
-        if (post.subtitle != null) {
+        if (post.subtitle != null && !post.isSummaryContent) {
             Text(post.subtitle, style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.height(defaultSpacerSize))
         }
     }
     item { PostMetadata(post.metadata, Modifier.padding(bottom = 24.dp)) }
     item { OriginalArticleButton(post.url) }
+    if (post.paragraphs.isNotEmpty()) {
+        item {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = stringResource(
+                    if (post.isSummaryContent) {
+                        R.string.post_summary_heading
+                    } else {
+                        R.string.post_body_heading
+                    },
+                ),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            if (post.isSummaryContent) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.post_summary_notice),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Spacer(Modifier.height(defaultSpacerSize))
+        }
+    }
     items(post.paragraphs) { Paragraph(paragraph = it) }
 }
 

@@ -28,6 +28,7 @@ data class Post(
     val publication: Publication? = null,
     val metadata: Metadata,
     val paragraphs: List<Paragraph> = emptyList(),
+    val isSummaryContent: Boolean = false,
     @DrawableRes val imageId: Int,
     @DrawableRes val imageThumbId: Int,
 )

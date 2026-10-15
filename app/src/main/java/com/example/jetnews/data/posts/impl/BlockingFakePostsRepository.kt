@@ -20,11 +20,11 @@ import com.example.jetnews.data.Result
 import com.example.jetnews.data.posts.PostsRepository
 import com.example.jetnews.model.Post
 import com.example.jetnews.model.PostsFeed
-import com.example.jetnews.utils.addOrRemove
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 
@@ -35,10 +35,10 @@ import kotlinx.coroutines.withContext
 @OptIn(ExperimentalCoroutinesApi::class)
 class BlockingFakePostsRepository : PostsRepository {
 
-    // for now, keep the favorites in memory
-    private val favorites = MutableStateFlow<Set<String>>(setOf())
-
     private val postsFeed = MutableStateFlow<PostsFeed?>(null)
+    private val favoriteTimestamps = MutableStateFlow<Map<String, Long>>(emptyMap())
+    private val historyTimestamps = MutableStateFlow<Map<String, Long>>(emptyMap())
+    private var nextTimestamp = 0L
 
     override suspend fun getPost(postId: String?): Result<Post> {
         return withContext(Dispatchers.IO) {
@@ -56,10 +56,29 @@ class BlockingFakePostsRepository : PostsRepository {
         return Result.Success(posts)
     }
 
-    override fun observeFavorites(): Flow<Set<String>> = favorites
+    override fun observeFavoriteIds(): Flow<Set<String>> = favoriteTimestamps.map { it.keys }
+    override fun observeFavoritePosts(): Flow<List<Post>> = favoriteTimestamps.map(::toOrderedPosts)
+    override fun observeReadingHistory(): Flow<List<Post>> = historyTimestamps.map(::toOrderedPosts)
     override fun observePostsFeed(): Flow<PostsFeed?> = postsFeed
 
     override suspend fun toggleFavorite(postId: String) {
-        favorites.update { it.addOrRemove(postId) }
+        favoriteTimestamps.update {
+            if (postId in it) it - postId else it + (postId to nextStamp())
+        }
     }
+
+    override suspend fun toggleFavorite(post: Post) {
+        toggleFavorite(post.id)
+    }
+
+    override suspend fun recordPostRead(post: Post) {
+        historyTimestamps.update { it + (post.id to nextStamp()) }
+    }
+
+    private fun toOrderedPosts(timestamps: Map<String, Long>): List<Post> =
+        timestamps.entries
+            .sortedByDescending { it.value }
+            .mapNotNull { (postId, _) -> posts.allPosts.find { it.id == postId } }
+
+    private fun nextStamp(): Long = ++nextTimestamp
 }

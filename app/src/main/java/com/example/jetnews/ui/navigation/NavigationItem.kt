@@ -22,6 +22,7 @@ import androidx.navigation3.runtime.NavKey
 import com.example.jetnews.R
 import com.example.jetnews.ui.home.HomeKey
 import com.example.jetnews.ui.interests.InterestsKey
+import com.example.jetnews.ui.saved.SavedKey
 
 data class NavigationItem(
     val navKey: NavKey,
@@ -42,5 +43,11 @@ val NAVIGATION_ITEMS = listOf(
         R.drawable.ic_list_alt,
         R.string.cd_navigate_interests,
         R.string.interests_title,
+    ),
+    NavigationItem(
+        SavedKey,
+        R.drawable.ic_bookmark,
+        R.string.cd_navigate_saved,
+        R.string.saved_title,
     ),
 )

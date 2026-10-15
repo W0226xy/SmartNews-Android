@@ -25,8 +25,14 @@ import com.example.jetnews.ui.home.HomeDeepLinkPattern
 import com.example.jetnews.ui.interests.InterestsDeepLinkPattern
 import com.example.jetnews.ui.navigation.DeepLinkKey
 import com.example.jetnews.ui.post.PostDeepLinkPattern
+import com.example.jetnews.ui.saved.SavedDeepLinkPattern
 
-val JetnewsDeepLinkPatterns = listOf(HomeDeepLinkPattern, PostDeepLinkPattern, InterestsDeepLinkPattern)
+val JetnewsDeepLinkPatterns = listOf(
+    HomeDeepLinkPattern,
+    PostDeepLinkPattern,
+    InterestsDeepLinkPattern,
+    SavedDeepLinkPattern,
+)
 
 fun Uri.handleDeepLink(): List<NavKey>? {
     val deepLinkRequest = DeepLinkRequest(this)

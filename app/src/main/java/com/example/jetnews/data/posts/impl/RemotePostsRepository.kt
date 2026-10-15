@@ -17,12 +17,12 @@
 package com.example.jetnews.data.posts.impl
 
 import com.example.jetnews.data.Result
+import com.example.jetnews.data.local.SavedPostsLocalDataSource
+import com.example.jetnews.data.posts.PostsRepository
 import com.example.jetnews.data.remote.SpaceflightNewsService
 import com.example.jetnews.data.remote.toPostOrNull
-import com.example.jetnews.data.posts.PostsRepository
 import com.example.jetnews.model.Post
 import com.example.jetnews.model.PostsFeed
-import com.example.jetnews.utils.addOrRemove
 import java.io.IOException
 import java.util.logging.Level
 import java.util.logging.Logger
@@ -32,13 +32,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 
-/** 正式运行时的网络文章仓库，收藏仅保存在内存中。 */
+/** 正式运行时的网络文章仓库，本地收藏和阅读历史交给 Room 持久化。 */
 class RemotePostsRepository(
     private val service: SpaceflightNewsService,
+    private val savedPostsLocalDataSource: SavedPostsLocalDataSource,
 ) : PostsRepository {
 
-    private val favorites = MutableStateFlow<Set<String>>(emptySet())
     private val postsFeed = MutableStateFlow<PostsFeed?>(null)
+    private val cachedPosts = MutableStateFlow<Map<String, Post>>(emptyMap())
 
     override suspend fun getPostsFeed(): Result<PostsFeed> = withContext(Dispatchers.IO) {
         try {
@@ -49,6 +50,7 @@ class RemotePostsRepository(
             if (posts.isEmpty()) return@withContext Result.Error(IOException("暂无可显示的资讯"))
 
             val feed = posts.toPostsFeed()
+            cachePosts(posts)
             postsFeed.value = feed
             Result.Success(feed)
         } catch (exception: Exception) {
@@ -63,24 +65,46 @@ class RemotePostsRepository(
 
         try {
             val response = service.getArticle(articleId)
-            if (!response.isSuccessful) return@withContext httpError(response.code())
+            if (!response.isSuccessful) {
+                return@withContext savedPostOrError(postId, response.code())
+            }
 
             val post = response.body()?.toPostOrNull()
-                ?: return@withContext Result.Error(IOException("文章内容不可用"))
+                ?: return@withContext savedPostOrError(postId)
+            cachePost(post)
             Result.Success(post)
         } catch (exception: Exception) {
             logger.log(Level.WARNING, "加载文章详情失败", exception)
-            Result.Error(IOException("暂时无法加载文章"))
+            savedPostOrError(postId)
         }
     }
 
-    override fun observeFavorites(): Flow<Set<String>> = favorites
+    override fun observeFavoriteIds(): Flow<Set<String>> = savedPostsLocalDataSource.observeFavoriteIds()
+
+    override fun observeFavoritePosts(): Flow<List<Post>> = savedPostsLocalDataSource.observeFavoritePosts()
+
+    override fun observeReadingHistory(): Flow<List<Post>> = savedPostsLocalDataSource.observeReadingHistory()
 
     override fun observePostsFeed(): Flow<PostsFeed?> = postsFeed
 
     override suspend fun toggleFavorite(postId: String) {
-        // 阶段四接入 Room 后，此内存收藏会在应用重启后持久化。
-        favorites.update { it.addOrRemove(postId) }
+        withContext(Dispatchers.IO) {
+            toggleFavoriteInternal(postId)
+        }
+    }
+
+    override suspend fun toggleFavorite(post: Post) {
+        withContext(Dispatchers.IO) {
+            cachePost(post)
+            toggleFavoriteInternal(post.id)
+        }
+    }
+
+    override suspend fun recordPostRead(post: Post) {
+        withContext(Dispatchers.IO) {
+            cachePost(post)
+            savedPostsLocalDataSource.recordPostRead(post)
+        }
     }
 
     private fun List<Post>.toPostsFeed(): PostsFeed = PostsFeed(
@@ -93,6 +117,40 @@ class RemotePostsRepository(
     private fun httpError(code: Int): Result.Error {
         logger.warning("资讯接口返回 HTTP $code")
         return Result.Error(IOException("资讯服务暂时不可用"))
+    }
+
+    private suspend fun savedPostOrError(postId: String, responseCode: Int? = null): Result<Post> {
+        // 断网或服务异常时仍可用 Room 中的文章快照打开已保存详情。
+        savedPostsLocalDataSource.findSavedPost(postId)?.let { return Result.Success(it) }
+        return if (responseCode != null) {
+            httpError(responseCode)
+        } else {
+            Result.Error(IOException("暂时无法加载文章"))
+        }
+    }
+
+    private suspend fun toggleFavoriteInternal(postId: String) {
+        if (savedPostsLocalDataSource.isFavorite(postId)) {
+            savedPostsLocalDataSource.removeFavorite(postId)
+            return
+        }
+
+        val cachedPost = cachedPosts.value[postId]
+            ?: throw IllegalStateException("文章尚未加载，无法收藏")
+        savedPostsLocalDataSource.upsertFavorite(cachedPost)
+    }
+
+    private fun cachePosts(posts: List<Post>) {
+        cachedPosts.update { previous ->
+            buildMap {
+                putAll(previous)
+                posts.forEach { put(it.id, it) }
+            }
+        }
+    }
+
+    private fun cachePost(post: Post) {
+        cachedPosts.update { previous -> previous + (post.id to post) }
     }
 
     private companion object {

@@ -51,6 +51,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.rememberTopAppBarState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -88,7 +90,6 @@ import com.example.jetnews.ui.theme.JetnewsTheme
 import com.example.jetnews.ui.utils.BookmarkButton
 import com.example.jetnews.ui.utils.FavoriteButton
 import com.example.jetnews.ui.utils.ShareButton
-import com.example.jetnews.ui.utils.TextSettingsButton
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
@@ -119,7 +120,9 @@ fun EntryProviderScope<NavKey>.postEntry(postsRepository: PostsRepository, isExp
             isExpandedScreen = isExpandedScreen(),
             onBack = onBack,
             onToggleFavorite = postViewModel::toggleFavorite,
+            onPostShown = postViewModel::onPostShown,
             onScroll = postViewModel::onScroll,
+            onTranslateClick = postViewModel::translateOrToggleOriginal,
         )
     }
 }
@@ -131,7 +134,9 @@ fun PostScreen(
     isExpandedScreen: Boolean,
     onBack: () -> Unit,
     onToggleFavorite: () -> Unit,
+    onPostShown: (Post) -> Unit,
     onScroll: (index: Int, offset: Int) -> Unit,
+    onTranslateClick: () -> Unit,
 ) {
     if (uiState.loading) {
         Surface(modifier = Modifier.fillMaxSize()) {
@@ -142,12 +147,21 @@ fun PostScreen(
             }
         }
     } else {
-        val post = uiState.post
+        val post = if (uiState.showingTranslation) {
+            (uiState.translationState as? ArticleTranslationState.Success)?.translatedPost ?: uiState.post
+        } else {
+            uiState.post
+        }
         if (post != null) {
             val lazyListState = rememberLazyListState(
                 initialFirstVisibleItemIndex = uiState.initialFirstVisibleItemIndex,
                 initialFirstVisibleItemScrollOffset = uiState.initialFirstVisibleItemScrollOffset,
             )
+
+            LaunchedEffect(post.id) {
+                // 只在详情真正显示成功后记一次历史，避免重组重复写入。
+                onPostShown(post)
+            }
 
             LaunchedEffect(lazyListState) {
                 snapshotFlow {
@@ -169,6 +183,9 @@ fun PostScreen(
                 isFavorite = uiState.isFavorite,
                 onToggleFavorite = onToggleFavorite,
                 lazyListState = lazyListState,
+                translationState = uiState.translationState,
+                showingTranslation = uiState.showingTranslation,
+                onTranslateClick = onTranslateClick,
             )
         } else {
             Surface(modifier = Modifier.fillMaxSize()) {
@@ -199,6 +216,9 @@ fun PostScreen(
     onBack: () -> Unit,
     isFavorite: Boolean,
     onToggleFavorite: () -> Unit,
+    translationState: ArticleTranslationState = ArticleTranslationState.Idle,
+    showingTranslation: Boolean = false,
+    onTranslateClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     lazyListState: LazyListState = rememberLazyListState(),
 ) {
@@ -211,6 +231,9 @@ fun PostScreen(
     Box(modifier) {
         PostScreenContent(
             post = post,
+            translationState = translationState,
+            showingTranslation = showingTranslation,
+            onTranslateClick = onTranslateClick,
             // Allow opening the Drawer if the screen is not expanded
             navigationIconContent = {
                 if (!isExpandedScreen) {
@@ -231,11 +254,7 @@ fun PostScreen(
                             FavoriteButton(onClick = { showUnimplementedActionDialog = true })
                             BookmarkButton(isBookmarked = isFavorite, onClick = onToggleFavorite)
                             ShareButton(onClick = { sharePost(post, context) })
-                            TextSettingsButton(
-                                onClick = {
-                                    showUnimplementedActionDialog = true
-                                },
-                            )
+                            TranslationAction(translationState, showingTranslation, onTranslateClick)
                         },
                     )
                 }
@@ -250,6 +269,9 @@ fun PostScreen(
                 isFavorite = isFavorite,
                 onToggleFavorite = onToggleFavorite,
                 onSharePost = { sharePost(post, context) },
+                translationState = translationState,
+                showingTranslation = showingTranslation,
+                onTranslateClick = onTranslateClick,
                 modifier = Modifier
                     .windowInsetsPadding(WindowInsets.safeDrawing)
                     .fillMaxWidth()
@@ -272,6 +294,9 @@ fun PostScreen(
 @Composable
 private fun PostScreenContent(
     post: Post,
+    translationState: ArticleTranslationState,
+    showingTranslation: Boolean,
+    onTranslateClick: () -> Unit,
     navigationIconContent: @Composable () -> Unit = { },
     bottomBarContent: @Composable () -> Unit = { },
     lazyListState: LazyListState = rememberLazyListState(),
@@ -286,6 +311,7 @@ private fun PostScreenContent(
                     title = post.publication?.name.orEmpty(),
                     navigationIconContent = navigationIconContent,
                     scrollBehavior = scrollBehavior,
+                    actions = { TranslationAction(translationState, showingTranslation, onTranslateClick) },
                 )
             }
         },
@@ -293,6 +319,7 @@ private fun PostScreenContent(
     ) { innerPadding ->
         PostContent(
             post = post,
+            translationBanner = { PostTranslationBanner(translationState, showingTranslation, onTranslateClick) },
             contentPadding = innerPadding,
             modifier = if (showTopAppBar) {
                 Modifier
@@ -309,6 +336,7 @@ private fun TopAppBar(
     title: String,
     navigationIconContent: @Composable () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior?,
+    actions: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     CenterAlignedTopAppBar(
@@ -329,6 +357,7 @@ private fun TopAppBar(
             }
         },
         navigationIcon = navigationIconContent,
+        actions = { actions() },
         scrollBehavior = scrollBehavior,
         modifier = modifier,
     )
@@ -343,7 +372,15 @@ private fun TopAppBar(
  * @param modifier modifier for the root element
  */
 @Composable
-private fun PostTopBar(isFavorite: Boolean, onToggleFavorite: () -> Unit, onSharePost: () -> Unit, modifier: Modifier = Modifier) {
+private fun PostTopBar(
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
+    onSharePost: () -> Unit,
+    translationState: ArticleTranslationState,
+    showingTranslation: Boolean,
+    onTranslateClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Surface(
         shape = RoundedCornerShape(8.dp),
         border = BorderStroke(Dp.Hairline, MaterialTheme.colorScheme.onSurface.copy(alpha = .6f)),
@@ -353,7 +390,102 @@ private fun PostTopBar(isFavorite: Boolean, onToggleFavorite: () -> Unit, onShar
             FavoriteButton(onClick = { /* Functionality not available */ })
             BookmarkButton(isBookmarked = isFavorite, onClick = onToggleFavorite)
             ShareButton(onClick = onSharePost)
-            TextSettingsButton(onClick = { /* Functionality not available */ })
+            TranslationAction(translationState, showingTranslation, onTranslateClick)
+        }
+    }
+}
+
+@Composable
+private fun TranslationAction(
+    translationState: ArticleTranslationState,
+    showingTranslation: Boolean,
+    onClick: () -> Unit,
+) {
+    val inProgress = translationState == ArticleTranslationState.DownloadingModel ||
+        translationState == ArticleTranslationState.Translating
+    val hasTranslation = translationState is ArticleTranslationState.Success
+    if (hasTranslation) {
+        TextButton(onClick = onClick) {
+            Text(stringResource(if (showingTranslation) R.string.post_show_original else R.string.post_show_translation))
+        }
+    } else {
+        IconButton(onClick = onClick, enabled = !inProgress) {
+            if (inProgress) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            } else {
+                Icon(
+                    imageVector = Icons.Outlined.Translate,
+                    contentDescription = stringResource(R.string.post_translate_article),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PostTranslationBanner(
+    translationState: ArticleTranslationState,
+    showingTranslation: Boolean,
+    onRetry: () -> Unit,
+) {
+    when (translationState) {
+        ArticleTranslationState.Idle -> Unit
+        ArticleTranslationState.DownloadingModel,
+        ArticleTranslationState.Translating,
+        -> Surface(
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            shape = MaterialTheme.shapes.medium,
+            modifier = Modifier.padding(bottom = 12.dp),
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                Text(
+                    text = stringResource(
+                        if (translationState == ArticleTranslationState.DownloadingModel) {
+                            R.string.post_downloading_translation_model
+                        } else {
+                            R.string.post_translating
+                        },
+                    ),
+                    modifier = Modifier.padding(start = 12.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+
+        is ArticleTranslationState.Success -> if (showingTranslation) Surface(
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            shape = MaterialTheme.shapes.small,
+            modifier = Modifier.padding(bottom = 12.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.post_translation_disclaimer),
+                modifier = Modifier.padding(12.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        is ArticleTranslationState.Error -> Surface(
+            color = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+            shape = MaterialTheme.shapes.medium,
+            modifier = Modifier.padding(bottom = 12.dp),
+        ) {
+            Row(
+                modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = translationState.message,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                TextButton(onClick = onRetry) { Text(stringResource(R.string.post_translation_retry)) }
+            }
         }
     }
 }

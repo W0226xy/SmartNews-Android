@@ -35,6 +35,7 @@ import com.example.jetnews.ui.navigation.NAVIGATION_ITEMS
 import com.example.jetnews.ui.navigation.Navigator
 import com.example.jetnews.ui.navigation.PopUpTo
 import com.example.jetnews.ui.navigation.rememberNavigationState
+import com.example.jetnews.ui.saved.SavedKey
 import com.example.jetnews.ui.theme.JetnewsTheme
 import kotlinx.coroutines.launch
 
@@ -49,7 +50,7 @@ fun JetnewsApp(appContainer: AppContainer, isBackEnabled: Boolean, initialBackSt
     val navigationState = rememberNavigationState(
         //HomeKey 和 InterestsKey不是页面本身，而是页面的“身份标识”,
         primaryTopLevelKey = HomeKey, //默认顶级页面为首页，用于决定默认显示的页面
-        topLevelKeys = setOf(HomeKey, InterestsKey),//首页和兴趣页都是“顶级页面”,它们通常通过侧边抽屉或导航栏切换，而不是像文章详情页那样层层进入。
+        topLevelKeys = setOf(HomeKey, InterestsKey, SavedKey),//首页、兴趣页和已保存页都是顶级页面。
         initialBackStack = initialBackStack,//将 MainActivity 传进来的页面栈交给导航系统
         //比如普通启动：initialBackStack = [HomeKey]
         //深链接启动：initialBackStack = [HomeKey, ArticleKey("某篇文章")]
