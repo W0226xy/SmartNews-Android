@@ -6,12 +6,12 @@ SmartNews 是一个用于学习与求职展示的智能资讯阅读 Android App�
 
 ## 当前功能
 
-- 本地模拟资讯流与文章阅读
+- Guardian Content API 资讯流与文章阅读
 - 手机与平板自适应布局
 - 首页、文章详情与兴趣偏好的可运行导航
 - 浅色与深色 Material 3 主题
 
-当前默认运行时数据源为 The Guardian Content API，并保留 Spaceflight News API 代码用于兼容与对比验证。
+当前正式运行时数据源为 The Guardian Content API。
 
 ## 技术栈
 

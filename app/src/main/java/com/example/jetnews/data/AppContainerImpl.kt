@@ -25,10 +25,8 @@ import com.example.jetnews.data.local.JetnewsDatabase
 import com.example.jetnews.data.local.RoomSavedPostsLocalDataSource
 import com.example.jetnews.data.local.SavedPostsLocalDataSource
 import com.example.jetnews.data.posts.impl.GuardianPostsRepository
-import com.example.jetnews.data.remote.SpaceflightNewsService
 import com.example.jetnews.data.remote.GuardianNewsService
 import com.example.jetnews.data.posts.PostsRepository
-import com.example.jetnews.data.posts.impl.RemotePostsRepository
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import retrofit2.Retrofit
@@ -55,14 +53,6 @@ class AppContainerImpl(private val applicationContext: Context) : AppContainer {
     // 它创建并持有应用中实际使用的仓库实例。
     // 两个仓库都通过 by lazy 懒加载：只有第一次访问时才创建实例，
     // 同一个实例在应用整个生命周期中共享。
-    private val spaceflightNewsService: SpaceflightNewsService by lazy {
-        Retrofit.Builder()
-            .baseUrl(SPACEFLIGHT_BASE_URL)
-            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
-            .build()
-            .create(SpaceflightNewsService::class.java)
-    }
-
     private val guardianNewsService: GuardianNewsService by lazy {
         Retrofit.Builder()
             .baseUrl(GUARDIAN_BASE_URL)
@@ -90,7 +80,6 @@ class AppContainerImpl(private val applicationContext: Context) : AppContainer {
     }
 
     override val postsRepository: PostsRepository by lazy {
-        // 正式运行时默认接 Guardian；Spaceflight 代码仍保留以兼容后续切换和测试。
         GuardianPostsRepository(
             service = guardianNewsService,
             savedPostsLocalDataSource = savedPostsLocalDataSource,
@@ -100,7 +89,6 @@ class AppContainerImpl(private val applicationContext: Context) : AppContainer {
     }
 
     private companion object {
-        const val SPACEFLIGHT_BASE_URL = "https://api.spaceflightnewsapi.net/v4/"
         const val GUARDIAN_BASE_URL = "https://content.guardianapis.com/"
     }
 }

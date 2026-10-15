@@ -18,15 +18,15 @@ package com.example.jetnews.ui.home
 
 import com.example.jetnews.data.Result
 import com.example.jetnews.data.posts.PostsRepository
-import com.example.jetnews.data.posts.impl.FakePostsRepository
-import com.example.jetnews.data.posts.impl.post1
-import com.example.jetnews.data.posts.impl.posts
 import com.example.jetnews.data.preferences.NewsInterest
 import com.example.jetnews.data.preferences.NewsPreferencesRepository
 import com.example.jetnews.data.preferences.RecommendationTarget
 import com.example.jetnews.data.preferences.UpdateInterestsResult
 import com.example.jetnews.model.Post
 import com.example.jetnews.model.PostsFeed
+import com.example.jetnews.test.TestPostFactory
+import com.example.jetnews.test.TestPostsRepository
+import com.example.jetnews.test.testPostsFeed
 import java.io.IOException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -63,8 +63,8 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun initialLoad_withFakePostsRepository_emitsSuccess() = runTest {
-        val viewModel = HomeViewModel(FakePostsRepository())
+    fun initialLoad_withTestPostsRepository_emitsSuccess() = runTest {
+        val viewModel = HomeViewModel(TestPostsRepository())
 
         val state = viewModel.uiState.filterIsInstance<HomeUiState.Success>().first()
 
@@ -83,7 +83,8 @@ class HomeViewModelTest {
 
     @Test
     fun refresh_callsRepositoryAgain_andUpdatesFeedAfterSuccess() = runTest {
-        val updatedFeed = posts.copy(highlightedPost = post1.copy(id = "updated-post"))
+        val posts = testPostsFeed()
+        val updatedFeed = posts.copy(highlightedPost = TestPostFactory.create(id = "updated-post"))
         val refreshResult = CompletableDeferred<Result<PostsFeed>>()
         val repository = ControlledRefreshPostsRepository(
             initialResult = Result.Success(posts),
@@ -110,6 +111,7 @@ class HomeViewModelTest {
 
     @Test
     fun refresh_whenRepositoryFails_keepsOldFeedAndShowsError() = runTest {
+        val posts = testPostsFeed()
         val refreshResult = CompletableDeferred<Result<PostsFeed>>()
         val repository = ControlledRefreshPostsRepository(
             initialResult = Result.Success(posts),
@@ -131,6 +133,7 @@ class HomeViewModelTest {
 
     @Test
     fun changingInterests_requestsRecommendationsAgain() = runTest {
+        val posts = testPostsFeed()
         val refreshResult = CompletableDeferred<Result<PostsFeed>>()
         val repository = ControlledRefreshPostsRepository(Result.Success(posts), refreshResult)
         val preferences = MutableNewsPreferencesRepository()

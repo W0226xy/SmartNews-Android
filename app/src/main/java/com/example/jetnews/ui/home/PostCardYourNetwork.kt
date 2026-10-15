@@ -40,14 +40,10 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import com.example.jetnews.R
-import com.example.jetnews.data.posts.impl.post1
-import com.example.jetnews.data.posts.impl.post2
-import com.example.jetnews.data.posts.impl.post3
-import com.example.jetnews.data.posts.impl.post4
-import com.example.jetnews.data.posts.impl.post5
 import com.example.jetnews.model.Post
 import com.example.jetnews.model.PostAuthor
 import com.example.jetnews.ui.theme.JetnewsTheme
+import com.example.jetnews.ui.preview.previewPosts
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -154,7 +150,5 @@ fun PreviewPostCardPopularLongText(@PreviewParameter(PostPreviewParameterProvide
  * be the right place to instantiate dummy instances.
  */
 class PostPreviewParameterProvider : PreviewParameterProvider<Post> {
-    override val values = sequenceOf(
-        post1, post2, post3, post4, post5,
-    )
+    override val values = previewPosts.asSequence()
 }

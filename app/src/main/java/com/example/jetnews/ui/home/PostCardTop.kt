@@ -34,9 +34,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.jetnews.R
-import com.example.jetnews.data.posts.impl.posts
 import com.example.jetnews.model.Post
 import com.example.jetnews.ui.theme.JetnewsTheme
+import com.example.jetnews.ui.preview.previewPost
 import com.example.jetnews.utils.CompletePreviews
 import coil.compose.AsyncImage
 
@@ -96,7 +96,7 @@ fun PostCardTop(post: Post, modifier: Modifier = Modifier) {
 fun PostCardTopPreview() {
     JetnewsTheme {
         Surface {
-            PostCardTop(posts.highlightedPost)
+            PostCardTop(previewPost())
         }
     }
 }
@@ -112,7 +112,7 @@ fun PostCardTopPreview() {
 fun PostCardTopPreviews() {
     JetnewsTheme {
         Surface {
-            PostCardTop(posts.highlightedPost)
+            PostCardTop(previewPost())
         }
     }
 }

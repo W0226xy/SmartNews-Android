@@ -83,17 +83,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import com.example.jetnews.R
-import com.example.jetnews.data.Result
 import com.example.jetnews.data.posts.PostsRepository
 import com.example.jetnews.data.preferences.NewsPreferencesRepository
-import com.example.jetnews.data.posts.impl.BlockingFakePostsRepository
 import com.example.jetnews.deeplink.util.DeepLinkPattern
 import com.example.jetnews.model.Post
 import com.example.jetnews.model.PostsFeed
 import com.example.jetnews.ui.modifiers.interceptKey
 import com.example.jetnews.ui.navigation.ListDetailScene
 import com.example.jetnews.ui.theme.JetnewsTheme
-import kotlinx.coroutines.runBlocking
+import com.example.jetnews.ui.preview.previewPostsFeed
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -637,13 +635,10 @@ private fun HomeTopAppBar(
 @Preview("Home list drawer screen (big font)", fontScale = 1.5f)
 @Composable
 fun PreviewHomeListDrawerScreen() {
-    val postsFeed = runBlocking {
-        (BlockingFakePostsRepository().getPostsFeed() as Result.Success).data
-    }
     JetnewsTheme {
         HomeFeedScreen(
             uiState = HomeUiState.Success(
-                postsFeed = postsFeed,
+                postsFeed = previewPostsFeed(),
                 favorites = emptySet(),
                 searchInput = "",
             ),
@@ -667,13 +662,10 @@ fun PreviewHomeListDrawerScreen() {
 @Preview("Home list navrail screen (big font)", fontScale = 1.5f, device = Devices.NEXUS_7_2013)
 @Composable
 fun PreviewHomeListNavRailScreen() {
-    val postsFeed = runBlocking {
-        (BlockingFakePostsRepository().getPostsFeed() as Result.Success).data
-    }
     JetnewsTheme {
         HomeFeedScreen(
             uiState = HomeUiState.Success(
-                postsFeed = postsFeed,
+                postsFeed = previewPostsFeed(),
                 favorites = emptySet(),
                 searchInput = "",
             ),

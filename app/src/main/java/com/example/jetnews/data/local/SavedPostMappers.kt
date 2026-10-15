@@ -17,7 +17,7 @@ private val savedPostJson = Json { ignoreUnknownKeys = true }
 
 private fun Post.savedSourceName(): String =
     publication?.name?.takeIf { it.isNotBlank() }
-        ?: metadata.author.name.ifBlank { "Spaceflight News" }
+        ?: metadata.author.name.ifBlank { "未知来源" }
 
 @Serializable
 private data class SavedParagraphSnapshot(

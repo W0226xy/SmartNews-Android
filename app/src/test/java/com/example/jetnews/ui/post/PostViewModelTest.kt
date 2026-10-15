@@ -2,9 +2,9 @@ package com.example.jetnews.ui.post
 
 import com.example.jetnews.data.Result
 import com.example.jetnews.data.posts.PostsRepository
-import com.example.jetnews.data.posts.impl.post3
 import com.example.jetnews.model.Post
 import com.example.jetnews.model.PostsFeed
+import com.example.jetnews.test.TestPostFactory
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -25,16 +25,17 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class PostViewModelTest {
     private val dispatcher = UnconfinedTestDispatcher()
+    private val testPost = TestPostFactory.create()
 
     @Before fun setUp() = Dispatchers.setMain(dispatcher)
     @After fun tearDown() = Dispatchers.resetMain()
 
     @Test
     fun translate_successExposesTranslatedPost_andToggleDoesNotReloadDetails() = runTest {
-        val repository = CountingPostRepository(post3)
-        val translated = post3.copy(title = "中文标题", paragraphs = post3.paragraphs.map { it.copy(text = "中文正文") })
+        val repository = CountingPostRepository(testPost)
+        val translated = testPost.copy(title = "中文标题", paragraphs = testPost.paragraphs.map { it.copy(text = "中文正文") })
         val translator = FakeArticleTranslator(Result.Success(translated))
-        val viewModel = PostViewModel(repository, post3.id, translator)
+        val viewModel = PostViewModel(repository, testPost.id, translator)
         advanceUntilIdle()
 
         viewModel.translateOrToggleOriginal()
@@ -56,8 +57,8 @@ class PostViewModelTest {
     @Test
     fun translate_failureExposesError_andKeepsOriginalVisible() = runTest {
         val viewModel = PostViewModel(
-            CountingPostRepository(post3),
-            post3.id,
+            CountingPostRepository(testPost),
+            testPost.id,
             FakeArticleTranslator(Result.Error(IllegalStateException("无法下载翻译模型"))),
         )
         advanceUntilIdle()
@@ -68,14 +69,14 @@ class PostViewModelTest {
         val error = viewModel.uiState.value.translationState as ArticleTranslationState.Error
         assertEquals("翻译失败，请检查网络连接后重试", error.message)
         assertFalse(viewModel.uiState.value.showingTranslation)
-        assertEquals(post3, viewModel.uiState.value.post)
+        assertEquals(testPost, viewModel.uiState.value.post)
     }
 
     @Test
     fun repeatedTranslateClick_doesNotStartConcurrentWork() = runTest {
         val result = CompletableDeferred<Result<Post>>()
         val translator = FakeArticleTranslator(deferredResult = result)
-        val viewModel = PostViewModel(CountingPostRepository(post3), post3.id, translator)
+        val viewModel = PostViewModel(CountingPostRepository(testPost), testPost.id, translator)
         advanceUntilIdle()
 
         viewModel.translateOrToggleOriginal()
@@ -83,7 +84,7 @@ class PostViewModelTest {
 
         assertEquals(1, translator.calls)
         assertTrue(viewModel.uiState.value.translationState == ArticleTranslationState.Translating)
-        result.complete(Result.Success(post3.copy(title = "译文")))
+        result.complete(Result.Success(testPost.copy(title = "译文")))
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.translationState is ArticleTranslationState.Success)
     }

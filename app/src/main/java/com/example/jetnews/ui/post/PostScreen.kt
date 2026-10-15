@@ -77,23 +77,20 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import com.example.jetnews.R
-import com.example.jetnews.data.Result
 import com.example.jetnews.data.posts.PostsRepository
-import com.example.jetnews.data.posts.impl.BlockingFakePostsRepository
-import com.example.jetnews.data.posts.impl.post3
 import com.example.jetnews.deeplink.util.DeepLinkPattern
 import com.example.jetnews.model.Post
 import com.example.jetnews.ui.home.HomeKey
 import com.example.jetnews.ui.navigation.DeepLinkKey
 import com.example.jetnews.ui.navigation.ListDetailScene
 import com.example.jetnews.ui.theme.JetnewsTheme
+import com.example.jetnews.ui.preview.previewPost
 import com.example.jetnews.ui.utils.BookmarkButton
 import com.example.jetnews.ui.utils.FavoriteButton
 import com.example.jetnews.ui.utils.ShareButton
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -539,10 +536,7 @@ fun sharePost(post: Post, context: Context) {
 @Composable
 fun PreviewPostDrawer() {
     JetnewsTheme {
-        val post = runBlocking {
-            (BlockingFakePostsRepository().getPost(post3.id) as Result.Success).data
-        }
-        PostScreen(post, false, {}, false, {})
+        PostScreen(previewPost(), false, {}, false, {})
     }
 }
 
@@ -556,9 +550,6 @@ fun PreviewPostDrawer() {
 @Composable
 fun PreviewPostNavRail() {
     JetnewsTheme {
-        val post = runBlocking {
-            (BlockingFakePostsRepository().getPost(post3.id) as Result.Success).data
-        }
-        PostScreen(post, true, {}, false, {})
+        PostScreen(previewPost(), true, {}, false, {})
     }
 }
